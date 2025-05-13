@@ -1,0 +1,46 @@
+# Ignore build artifacts
+obj/
+bin/
+*.o
+*.exe
+*.out
+
+# Ignore dependency libraries (if not part of the repo)
+dependencies/
+
+# Ignore editor/IDE-specific files
+.vscode/
+*.code-workspace
+*.suo
+*.user
+*.vcxproj
+*.vcxproj.filters
+
+# Ignore temporary files
+*.tmp
+*.log
+*.swp
+*.swo
+*.bak
+*.~*
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore CMake build directories (if using CMake)
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Ignore compiled shader binaries (if applicable)
+*.spv
+
+# Ignore other generated files
+*.a
+*.lib
+*.dll
+*.pdb
+*.dSYM/

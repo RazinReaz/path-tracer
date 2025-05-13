@@ -8,6 +8,9 @@
 #include <sstream>
 #include <vector>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 class Shader
 {
 public:
@@ -21,4 +24,5 @@ public:
     void setBool(const std::string &uniformVarName, bool value) const;
     void setInt(const std::string &uniformVarName, int value) const;
     void setFloat(const std::string &uniformVarName, float value) const;
+    void setMatrix4fv(const std::string &uniformVarName, glm::mat4 mat) const;
 };

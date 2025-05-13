@@ -4,13 +4,15 @@ GL_LIBS = -lglfw -lGL -ldl
 
 # Build output directory for object files
 OBJDIR = obj
+BINDIR = bin
 
 # sources
 COMMON_SRC = src/math/vector3f.cpp \
 		src/graphics/shader.cpp \
 		src/graphics/VAO.cpp \
 		src/graphics/VBO.cpp \
-		src/graphics/EBO.cpp
+		src/graphics/EBO.cpp \
+		src/graphics/camera.cpp
 
 GLAD_SRC = src/glad.c
 MAIN_SRC = src/main.cpp
@@ -34,31 +36,33 @@ EBO_OBJ = $(EBO_SRC:src/%.cpp=$(OBJDIR)/%.o)
 TEXTURE_OBJ = $(TEXTURE_SRC:src/%.cpp=$(OBJDIR)/%.o)
 
 
-all: $(TARGETS)
+# Ensure the bin directory exists
+$(BINDIR):
+	@mkdir -p $(BINDIR)
+
+all: $(BINDIR) $(TARGETS)
 
 # to build the target, we need all object files, but we dont have them yet!
 # compile the object files using the %.c:%.cpp rule
 # now that they are built, use them (%^) to create the final target ($@)
 
-main: $(MAIN_OBJ) $(COMMON_OBJ)
+$(BINDIR)/main: $(MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-obj_loader: $(LOADER_OBJ) $(COMMON_OBJ)
+$(BINDIR)/obj_loader: $(LOADER_OBJ) $(COMMON_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-test_glfw: $(TEST_GLFW_OBJ) $(GLAD_OBJ)
+$(BINDIR)/test_glfw: $(TEST_GLFW_OBJ) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
 
-ebo: $(EBO_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
+$(BINDIR)/ebo: $(EBO_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
 
-test: $(TEST_OBJ) $(GLAD_OBJ)
+$(BINDIR)/test: $(TEST_OBJ) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
 
-texture: $(TEXTURE_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
+$(BINDIR)/texture: $(TEXTURE_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
-
-
 
 
 $(OBJDIR)/%.o : src/%.cpp
@@ -70,9 +74,9 @@ $(OBJDIR)/%.o : %.c
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-run-%: %
+run-%: $(BINDIR)/%
 	@echo "Running $<..."
 	@./$<
 
 clean:
-	rm -f $(TARGETS) $(OBJDIR)/*.o
+	rm -f $(BINDIR)/* $(OBJDIR)/*.o

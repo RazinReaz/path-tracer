@@ -100,7 +100,7 @@ void Shader::setBool(const std::string &uniformVarName, bool value) const
     int location = glGetUniformLocation(ID, uniformVarName.c_str());
     if (location == -1)
     {
-        std::cerr << "ERROR::SHADER::UNIFORM::NOT_FOUND\n" << uniformVarName << std::endl;
+        std::cerr << "ERROR::SHADER::UNIFORM::BOOL::NOT_FOUND\n" << uniformVarName << std::endl;
     }
     glUniform1i(location, (int)value);
 }
@@ -110,7 +110,7 @@ void Shader::setInt(const std::string &uniformVarName, int value) const
     int location = glGetUniformLocation(ID, uniformVarName.c_str());
     if (location == -1)
     {
-        std::cerr << "ERROR::SHADER::UNIFORM::NOT_FOUND\n" << uniformVarName << std::endl;
+        std::cerr << "ERROR::SHADER::UNIFORM::INT::NOT_FOUND\n" << uniformVarName << std::endl;
     }
     glUniform1i(location, value);
 }
@@ -120,7 +120,17 @@ void Shader::setFloat(const std::string &uniformVarName, float value) const
     int location = glGetUniformLocation(ID, uniformVarName.c_str());
     if (location == -1)
     {
-        std::cerr << "ERROR::SHADER::UNIFORM::NOT_FOUND\n" << uniformVarName << std::endl;
+        std::cerr << "ERROR::SHADER::UNIFORM::FLOAT::NOT_FOUND\n" << uniformVarName << std::endl;
     }
     glUniform1f(location, value);
+}
+
+void Shader::setMatrix4fv(const std::string &uniformVarName, glm::mat4 mat) const
+{
+    int location = glGetUniformLocation(ID, uniformVarName.c_str());
+    if (location == -1)
+    {
+        std::cerr << "ERROR::SHADER::UNIFORM::MATRIX::NOT_FOUND\n" << uniformVarName << std::endl;
+    }
+    glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
 }
