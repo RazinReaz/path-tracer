@@ -240,10 +240,9 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, texture2);
 
         shaderProgram.use();
-        shaderProgram.setMatrix4fv("view", view);
-        shaderProgram.setMatrix4fv("projection", projection);
-        
-        
+        shaderProgram.setMat4("view", view);
+        shaderProgram.setMat4("projection", projection);
+
         glBindVertexArray(VAO);
         for (unsigned int i = 0; i < 10; i++)
         {
@@ -251,7 +250,7 @@ int main(void)
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            shaderProgram.setMatrix4fv("model", model);
+            shaderProgram.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 

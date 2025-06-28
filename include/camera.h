@@ -38,5 +38,6 @@ public:
     void handleMouseScroll(float yoffset);
     void handleKeyboardInput(Camera_Movement direction, float deltaTime);
     float getFOV() const { return fov; }
+    glm::vec3 getPosition() const { return position; }
 };
 

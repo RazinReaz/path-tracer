@@ -7,12 +7,13 @@ OBJDIR = obj
 BINDIR = bin
 
 # sources
-COMMON_SRC = src/math/vector3f.cpp \
-		src/graphics/shader.cpp \
-		src/graphics/VAO.cpp \
-		src/graphics/VBO.cpp \
-		src/graphics/EBO.cpp \
-		src/graphics/camera.cpp
+COMMON_SRC = src/opengl/shader.cpp \
+		src/opengl/VAO.cpp \
+		src/opengl/VBO.cpp \
+		src/opengl/EBO.cpp \
+		src/ray-tracer/camera.cpp\
+		src/ray-tracer/ray.cpp\
+		src/ray-tracer/triangle.cpp\
 
 GLAD_SRC = src/glad.c
 MAIN_SRC = src/main.cpp
@@ -22,8 +23,9 @@ TEST_SRC = src/test/test.cpp
 LOADER_SRC = src/test/obj_loader.cpp
 EBO_SRC = src/test/ebo.cpp
 TEXTURE_SRC = src/test/texture.cpp
+LIGHT_SRC = src/test/light.cpp
 
-TARGETS = main obj_loader test_glfw ebo test texture
+TARGETS = main obj_loader test_glfw ebo test texture light
 
 COMMON_OBJ = $(COMMON_SRC:src/%.cpp=$(OBJDIR)/%.o)
 GLAD_OBJ = $(GLAD_SRC:src/%.cpp=$(OBJDIR)/%.o)
@@ -34,6 +36,7 @@ TEST_OBJ = $(TEST_SRC:src/%.cpp=$(OBJDIR)/%.o)
 LOADER_OBJ = $(LOADER_SRC:src/%.cpp=$(OBJDIR)/%.o)
 EBO_OBJ = $(EBO_SRC:src/%.cpp=$(OBJDIR)/%.o)
 TEXTURE_OBJ = $(TEXTURE_SRC:src/%.cpp=$(OBJDIR)/%.o)
+LIGHT_OBJ = $(LIGHT_SRC:src/%.cpp=$(OBJDIR)/%.o)
 
 
 # Ensure the bin directory exists
@@ -46,10 +49,10 @@ all: $(BINDIR) $(TARGETS)
 # compile the object files using the %.c:%.cpp rule
 # now that they are built, use them (%^) to create the final target ($@)
 
-$(BINDIR)/main: $(MAIN_OBJ)
+$(BINDIR)/main: $(MAIN_OBJ) ${COMMON_OBJ}
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(BINDIR)/obj_loader: $(LOADER_OBJ) $(COMMON_OBJ)
+$(BINDIR)/obj_loader: $(LOADER_OBJ) ${OBJDIR}/math/vector3f.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 $(BINDIR)/test_glfw: $(TEST_GLFW_OBJ) $(GLAD_OBJ)
@@ -62,6 +65,9 @@ $(BINDIR)/test: $(TEST_OBJ) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
 
 $(BINDIR)/texture: $(TEXTURE_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
+
+$(BINDIR)/light: $(LIGHT_OBJ) $(GLAD_OBJ) $(COMMON_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(GL_LIBS)
 
 
