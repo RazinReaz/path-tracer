@@ -6,7 +6,7 @@ Camera::Camera(glm::vec3 pos, glm::vec3 up, float yaw, float pitch, float fov)
 {
     worldUp = up;
     moveSpeed = 2.5f;
-    sensitivity = 0.002f;
+    sensitivity = 0.05f;
     updateCameraVectors();
 }
 

@@ -16,7 +16,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "stb_image.h"
 
-#include "Shader.h"
+#include "shader.h"
 #include "VAO.h"
 #include "VBO.h"
 #include "EBO.h"
@@ -32,8 +32,8 @@ const int SCR_WIDTH = 800;
 const int SCR_HEIGHT = 600;
 
 const char* vertexShaderPath = "assets/shaders/light/vert.vs";
-const char* lightVertexShaderPath = "assets/shaders/light/lightVert.vs";
 const char* fragmentShaderPath = "assets/shaders/light/frag.fs";
+const char* lightVertexShaderPath = "assets/shaders/light/lightVert.vs";
 const char* lightFragmentShaderPath = "assets/shaders/light/lightFrag.fs";
 
 

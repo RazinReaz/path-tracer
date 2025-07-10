@@ -8,7 +8,7 @@ Triangle::Triangle(const glm::vec3 &va, const glm::vec3 &vb, const glm::vec3 &vc
 
 glm::vec3
 Triangle::interpolate_norm(const float u, const float v) {
-    glm::vec3 norm = (1 - u - v) * this.na 
+    glm::vec3 norm = (1 - u - v) * na 
     + u * nb 
     + v * nc;
     return glm::normalize(norm); 

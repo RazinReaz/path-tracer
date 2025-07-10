@@ -1,0 +1,442 @@
+nvcc -o bin/cuda_opengl_interop.run src/test/cuda_opengl_interop.cu src/glad.c -arch=sm_61 -I./src -Iinclude -Idependencies/include --expt-relaxed-constexpr -Xcompiler="/W3 /EHsc /MD" -lcuda -lcudart -Ldependencies/lib -lglfw3 -lopengl32 -lgdi32 -luser32 -lkernel32 -lshell32 -lcomdlg32 -ladvapi32 -lwinmm -lws2_32
+E:\Programming\Simulations\raytracing-gpu\src\test\cuda_opengl_interop.cu(108): warning #177-D: variable "vbo" was declared but never referenced
+      GLuint vao, vbo;
+                  ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(74): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<2, T, Q>(Func(a.x, b.x), Func(a.y, b.y));
+  			^
+          detected during:
+            instantiation of "vec<2, T, Q> glm::detail::functor2<vec, 2, T, Q>::call(Fct, const vec<2, T, Q> &, const vec<2, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=2, T=float, Q=glm::highp]" at line 17 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(74): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<2, T, Q>(Func(a.x, b.x), Func(a.y, b.y));
+  			^
+          detected during:
+            instantiation of "vec<2, T, Q> glm::detail::functor2<vec, 2, T, Q>::call(Fct, const vec<2, T, Q> &, const vec<2, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=2, T=float, Q=glm::highp]" at line 17 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(74): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<2, T, Q>(Func(a.x, b.x), Func(a.y, b.y));
+  			^
+          detected during:
+            instantiation of "vec<2, T, Q> glm::detail::functor2<vec, 2, T, Q>::call(Fct, const vec<2, T, Q> &, const vec<2, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=2, T=float, Q=glm::highp]" at line 17 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(74): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<2, T, Q>(Func(a.x, b.x), Func(a.y, b.y));
+  			^
+          detected during:
+            instantiation of "vec<2, T, Q> glm::detail::functor2<vec, 2, T, Q>::call(Fct, const vec<2, T, Q> &, const vec<2, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=2, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=2, T=float, Q=glm::highp]" at line 17 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMax<float>]" at line 274 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_max_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 644 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::max(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail\_vectorize.hpp(104): warning #20014-D: calling a __host__ function from a __host__ __device__ function is not allowed
+  			return vec<4, T, Q>(Func(a.x, b.x), Func(a.y, b.y), Func(a.z, b.z), Func(a.w, b.w));
+  			^
+          detected during:
+            instantiation of "vec<4, T, Q> glm::detail::functor2<vec, 4, T, Q>::call(Fct, const vec<4, T, Q> &, const vec<4, T, Q> &) [with vec=glm::vec, T=float, Q=glm::highp, Fct=glm::TMin<float>]" at line 265 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_min_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 630 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::min(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp]" at line 283 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::detail::compute_clamp_vector<L, T, Q, Aligned>::call(const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &, const glm::vec<L, T, Q> &) [with L=4, T=float, Q=glm::highp, Aligned=false]" at line 659 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_common.inl
+            instantiation of "glm::vec<L, T, Q> glm::clamp(const glm::vec<L, T, Q> &, T, T) [with L=4, T=float, Q=glm::highp]" at line 75 of E:\Programming\Simulations\raytracing-gpu\dependencies\include\glm\detail/func_packing.inl
+
+cuda_opengl_interop.cu
+tmpxft_0000094c_00000000-10_cuda_opengl_interop.cudafe1.cpp
+E:\Programming\Simulations\raytracing-gpu\src\test\cuda_opengl_interop.cu(108): warning C4101: 'vbo': unreferenced local variable
+glad.c
+"Running CUDA bin/cuda_opengl_interop.run..."
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576
+Mapped buffer size: 1048576

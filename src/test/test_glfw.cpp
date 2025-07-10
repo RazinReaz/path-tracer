@@ -111,7 +111,7 @@ int main(void)
          0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
     };
 
-    unsigned int VAO, VBO,;
+    unsigned int VAO, VBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glBindVertexArray(VAO);
