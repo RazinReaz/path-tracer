@@ -9,6 +9,7 @@
 
 #include <iostream>
 
+#define DEBUG 1
 
 #include "shader.h"
 #include "math/vec3.h"
@@ -17,33 +18,45 @@
 #include "ray-tracer/camera.h"
 
 
-#define DIM 512
+const int screenHeight = 512;
+const int screenWidth = 512;
+float aspect = screenWidth / screenHeight;
+float invWidth = 1.0f / screenWidth;
+float invHeight = 1.0f / screenHeight;
+Camera camera(vec3(0, 0, 2), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
+float widthMultiplier = invWidth * camera.fullwidth;
+float heightMultiplier = invHeight * camera.fullheight;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+void foo_debug();
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
 
-void __global__ kernel(uchar4 *ptr, Triangle tri) {
+void __global__ render(uchar4 *ptr, const int w, const int h, const float wMult, const float hMult, Camera cam, Triangle tri) {
 	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
 	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
-    if (pixelx >= DIM || pixely >= DIM) return;
-	int offset = pixelx + pixely * DIM;
+    if (pixelx >= w || pixely >= h) return;
+	int offset = pixelx + pixely * w;
+
+    float u = (float)pixelx * wMult;
+    float v = (float)pixely * hMult;
+    vec3 rayOrigin = cam.position;
+    vec3 rayDest = cam.topleft + u * cam.right - v * cam.up;
+    Ray ray(rayOrigin, rayDest - rayOrigin);
     
-	float worldx = 2 * pixelx/(float)DIM - 1.0f;
-	float worldy = 2 * pixely/(float)DIM - 1.0f;
-    float worldz = 1.0f;
     vec3 color;
-
-    Ray ray(vec3(worldx, worldy, worldz), vec3(0, 0, -1));
-    
-
     tri.calculate_hit_by(ray);
     if (ray.info.hit) {
-        color.r = 1.0f;
+        color.g = 1.0f;
     }
 
 	ptr[offset].x = color.r * 255;
@@ -58,7 +71,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
-    GLFWwindow *window = glfwCreateWindow(DIM, DIM, "CUDA+OpenGL interop minimal", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -78,6 +91,7 @@ int main() {
         std::cerr << "Failed to initialize GLAD\n";
         return -1;
     }
+
     
     GLuint vao;
     GLuint pbo;
@@ -92,6 +106,8 @@ int main() {
         vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1) 
     );
 
+    
+
     // init VAO
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -99,7 +115,7 @@ int main() {
     // Pixel buffer object for shared resource with CUDA
     glGenBuffers(1, &pbo);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, DIM * DIM * 4, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, screenWidth * screenHeight * 4, nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     cudaError_t err;
@@ -111,7 +127,7 @@ int main() {
     // Texture for fullscreen quad
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DIM, DIM, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); //! why
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); //! why
 
@@ -119,9 +135,15 @@ int main() {
     shader.setInt("tex", 0);
     // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
+    foo_debug();
+
+
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
         uchar4* device_pointer;
         size_t size;
@@ -137,9 +159,12 @@ int main() {
             std::cerr << "cudaGraphicsResourceGetMappedPointer error: " << cudaGetErrorString(err) << std::endl;
         }
         
-        dim3 blocksPerGrid((DIM + 15)/16, (DIM + 15)/16);
+        dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
         dim3 threadsPerBlock(16, 16);
-        kernel<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, triangle);
+        render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
+            screenWidth, screenHeight, 
+            widthMultiplier, heightMultiplier,
+            camera, triangle);
         
         err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -151,7 +176,7 @@ int main() {
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, DIM, DIM, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
         glClear(GL_COLOR_BUFFER_BIT);
         
@@ -172,10 +197,22 @@ int main() {
     return 0;
 }
 
+
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.handleKeyboardInput(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.handleKeyboardInput(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.handleKeyboardInput(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.handleKeyboardInput(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+        foo_debug();
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -183,4 +220,21 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+}
+
+
+
+void foo_debug() {
+    std::cout << "CAMERA ###" <<std::endl;
+    std::cout << "front [" << camera.front.x << ", " << camera.front.y << ", " << camera.front.z << "]" << std::endl;
+    std::cout << "right [" << camera.right.x << ", " << camera.right.y << ", " << camera.right.z << "]" << std::endl;
+    std::cout << "up    [" << camera.up.x << ", " << camera.up.y << ", " << camera.up.z << "]" << std::endl;
+    std::cout << "tplft [" << camera.topleft.x << ", " << camera.topleft.y << ", " << camera.topleft.z << "]" << std::endl;
+    std::cout << "pos   [" << camera.position.x << ", " << camera.position.y << ", " << camera.position.z << "]" << std::endl;
+    vec3 rayOrigin = camera.position;
+    vec3 rayDest = camera.topleft;
+    Ray ray(rayOrigin, rayDest - rayOrigin);
+    std::cout << "ray to topleft ###" <<std::endl;
+    std::cout << "ray ori [" << ray.origin.x << ", " << ray.origin.y << ", " << ray.origin.z << "]" << std::endl;
+    std::cout << "ray dir [" << ray.direction.x << ", " << ray.direction.y << ", " << ray.direction.z << "]" << std::endl;
 }

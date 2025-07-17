@@ -290,7 +290,7 @@ void processInput(GLFWwindow *window)
         camera.handleKeyboardInput(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.handleKeyboardInput(RIGHT, deltaTime);
-    }
+}
 
 
 // Process mouse movement

@@ -29,3 +29,5 @@
     - [ ] move the definitions from the `.cu` files to the `.h` files
     - `camera.h` file needs major overhaul. if I don't include any `glm` functions, the other files that used only opengl will not work.
 - [ ] `alignas(16)` for warp efficiency?
+- [ ] `camera` is global in `2.movement.cu`. A lot of global variables actually
+- [ ] should all camera functions be in device? I mean, the camera controls?

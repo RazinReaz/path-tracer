@@ -17,41 +17,52 @@ enum Camera_Movement
 class Camera
 {
 private:
+    __host__ __device__ void updateCameraVectors();
+public:
     vec3 position;
     vec3 front;
     vec3 up;
     vec3 right;
     vec3 worldUp;
+
     
     float yaw;
     float pitch;
     float fov;
+    float aspect;
+
+    float near;
+    float far;
+    vec3 topleft;
+    float halfheight, fullheight;
+    float halfwidth, fullwidth;
 
     float moveSpeed;
     float sensitivity;
-
-    void updateCameraVectors();
-
-public:
-    Camera(vec3 position, vec3 up, float yaw = -90.0f, float pitch = 0.0f, float fov = 45.0f);
-    void handleMouseMovement(float xoffset, float yoffset);
-    void handleMouseScroll(float yoffset);
-    void handleKeyboardInput(Camera_Movement direction, float deltaTime);
-    float getFOV() const { return fov; }
-    vec3 getPosition() const { return position; }
+    __host__ __device__ Camera(vec3 position, vec3 up, float yaw = -90.0f, float pitch = 0.0f, float fov = 45.0f, float near = 0.1f, float far = 100.0f, float aspect = 1.0f);
+    __host__ __device__ void handleMouseMovement(float xoffset, float yoffset);
+    // __host__ __device__ void handleMouseScroll(float yoffset);
+    __host__ __device__ void handleKeyboardInput(Camera_Movement direction, float deltaTime);
+    __host__ __device__ float getFOV() const { return fov; }
 };
 
 
-
-Camera::Camera(vec3 pos, vec3 up, float yaw, float pitch, float fov)
-    : position(pos), up(up), yaw(yaw), pitch(pitch), fov(fov)
+__host__ __device__ 
+Camera::Camera(vec3 pos, vec3 up, float yaw, float pitch, float fov, float near, float far, float aspect)
+    : position(pos), up(up), yaw(yaw), pitch(pitch), fov(fov), near(near), far(far), aspect(aspect)
 {
     worldUp = up;
-    moveSpeed = 2.5f;
+    moveSpeed = 0.05f;
     sensitivity = 0.05f;
+    halfheight = tanf(radians(fov) / 2.0) * near;
+    halfwidth = halfheight * aspect;
+    fullheight = halfheight * 2;
+    fullwidth = halfwidth * 2;
+    
     updateCameraVectors();
 }
 
+__host__ __device__
 void Camera::updateCameraVectors()
 {
     vec3 direction;
@@ -61,18 +72,19 @@ void Camera::updateCameraVectors()
     front = direction.normalize();
     right = (front.cross(worldUp)).normalize();
     up = (right.cross(front)).normalize();
+    topleft = position + front * near + up * halfheight - right * halfwidth;
 }
 
 
-void Camera::handleMouseScroll(float yoffset)
-{
-    if (fov >= 1.0f && fov <= 45.0f)
-        fov -= yoffset;
-    if (fov <= 1.0f)
-        fov = 1.0f;
-    if (fov >= 45.0f)
-        fov = 45.0f;
-}
+// void Camera::handleMouseScroll(float yoffset)
+// {
+//     if (fov >= 1.0f && fov <= 45.0f)
+//         fov -= yoffset;
+//     if (fov <= 1.0f)
+//         fov = 1.0f;
+//     if (fov >= 45.0f)
+//         fov = 45.0f;
+// }
 
 void Camera::handleKeyboardInput(Camera_Movement direction, float deltaTime)
 {
@@ -85,6 +97,7 @@ void Camera::handleKeyboardInput(Camera_Movement direction, float deltaTime)
         position -= cameraSpeed * right;
     if (direction == RIGHT)
         position += cameraSpeed * right;
+    updateCameraVectors();
 }
 
 void Camera::handleMouseMovement(float xoffset, float yoffset)
