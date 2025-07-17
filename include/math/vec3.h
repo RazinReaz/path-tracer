@@ -187,3 +187,9 @@ __host__ __device__ __forceinline__ vec3 vec3::scale(float s)
     return *this;
 }
 
+
+// ostream overload for printing vec3
+inline std::ostream& operator<<(std::ostream& os, const vec3& v) {
+    os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+    return os;
+}

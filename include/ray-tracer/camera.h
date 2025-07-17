@@ -33,7 +33,7 @@ public:
 
     float near;
     float far;
-    vec3 topleft;
+    vec3 bottomleft;
     float halfheight, fullheight;
     float halfwidth, fullwidth;
 
@@ -52,12 +52,12 @@ Camera::Camera(vec3 pos, vec3 up, float yaw, float pitch, float fov, float near,
     : position(pos), up(up), yaw(yaw), pitch(pitch), fov(fov), near(near), far(far), aspect(aspect)
 {
     worldUp = up;
-    moveSpeed = 0.05f;
+    moveSpeed = 0.5f;
     sensitivity = 0.05f;
-    halfheight = tanf(radians(fov) / 2.0) * near;
+    halfheight = tanf(radians(fov) / 2.0f) * near;
     halfwidth = halfheight * aspect;
-    fullheight = halfheight * 2;
-    fullwidth = halfwidth * 2;
+    fullheight = halfheight * 2.0f;
+    fullwidth = halfwidth * 2.0f;
     
     updateCameraVectors();
 }
@@ -72,7 +72,7 @@ void Camera::updateCameraVectors()
     front = direction.normalize();
     right = (front.cross(worldUp)).normalize();
     up = (right.cross(front)).normalize();
-    topleft = position + front * near + up * halfheight - right * halfwidth;
+    bottomleft = position + front * near - up * halfheight - right * halfwidth;
 }
 
 
@@ -97,6 +97,10 @@ void Camera::handleKeyboardInput(Camera_Movement direction, float deltaTime)
         position -= cameraSpeed * right;
     if (direction == RIGHT)
         position += cameraSpeed * right;
+    if (direction == UP)
+        position += cameraSpeed * up;
+    if (direction == DOWN)
+        position -= cameraSpeed * up;
     updateCameraVectors();
 }
 

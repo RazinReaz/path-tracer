@@ -1,6 +1,7 @@
 #pragma once
 
 #include "math/vec3.h"
+#include <ostream>
 
 typedef struct Info
 {
@@ -17,13 +18,19 @@ public:
     __host__ __device__
     Ray(const vec3 &origin, const vec3& direction);
     __host__ __device__ void set_hit(const float &distance, const vec3 &normal);
-
+    __host__ friend std::ostream& operator<<(std::ostream& os, const Ray& ray);
 private:
 public:
     vec3 origin;
     vec3 direction;
     Info info;
 };
+
+__host__
+inline std::ostream& operator<<(std::ostream& os, const Ray& ray) {
+    os << "Ray(origin: " << ray.origin << ", direction: " << ray.direction << ")";
+    return os;
+}
 
 __host__ __device__
 Ray::Ray()

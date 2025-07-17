@@ -38,11 +38,11 @@ void __global__ kernel(uchar4 *ptr, Triangle tri) {
 	float worldx = 2 * pixelx/(float)DIM - 1.0f;
 	float worldy = 2 * pixely/(float)DIM - 1.0f;
     float worldz = 1.0f;
-    vec3 color;
-
+    
     Ray ray(vec3(worldx, worldy, worldz), vec3(0, 0, -1));
     
-
+    
+    vec3 color;
     tri.calculate_hit_by(ray);
     if (ray.info.hit) {
         color.r = 1.0f;

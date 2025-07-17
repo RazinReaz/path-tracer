@@ -29,14 +29,16 @@ float heightMultiplier = invHeight * camera.fullheight;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-
+float lastX = screenWidth / 2.0f;
+float lastY = screenHeight / 2.0f;
+bool firstMouse = true;
 
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
-void foo_debug();
+
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
@@ -49,14 +51,16 @@ void __global__ render(uchar4 *ptr, const int w, const int h, const float wMult,
 
     float u = (float)pixelx * wMult;
     float v = (float)pixely * hMult;
+
     vec3 rayOrigin = cam.position;
-    vec3 rayDest = cam.topleft + u * cam.right - v * cam.up;
+    vec3 rayDest = cam.bottomleft + u * cam.right + v * cam.up;
     Ray ray(rayOrigin, rayDest - rayOrigin);
-    
+
     vec3 color;
+
     tri.calculate_hit_by(ray);
     if (ray.info.hit) {
-        color.g = 1.0f;
+        color.r = 1.0f;
     }
 
 	ptr[offset].x = color.r * 255;
@@ -84,6 +88,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwMakeContextCurrent(window);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -98,12 +103,21 @@ int main() {
     GLuint texture;
     cudaGraphicsResource* cuda_resource;
 
-    
-
     Shader shader(vertexShaderPath, fragmentShaderPath);
-    Triangle triangle(
-        vec3(-0.5, 0, 0), vec3(0.5, 0, 0), vec3(0, 0.5, 0),
-        vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1) 
+    Triangle zaxis(
+        vec3(-0.01f, 0.0f, 0.0f), vec3(0.01, 0.0f, 0.0f), vec3(0.0f, 0.02f, 0.5f),
+        vec3(0, 1, 0), vec3(0, 1, 0), vec3(0, 1, 0) 
+    );
+    // X axis (red)
+    Triangle xaxis(
+        vec3(0.0f, 0.01f, 0.0f), vec3(0.0f, -0.01f, 0.0f), vec3(0.5f, 0.0f, 0.0f),
+        vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1)
+    );
+    
+    // Y axis (blue)
+    Triangle yaxis(
+        vec3(-0.01f, 0.0f, 0.0f), vec3(0.01f, 0.0f, 0.0f), vec3(0.0f, 0.5f, 0.0f),
+        vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1)
     );
 
     
@@ -135,13 +149,9 @@ int main() {
     shader.setInt("tex", 0);
     // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
-    foo_debug();
-
-
-
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
-        float currentFrame = glfwGetTime();
+        float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
@@ -164,7 +174,7 @@ int main() {
         render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
             screenWidth, screenHeight, 
             widthMultiplier, heightMultiplier,
-            camera, triangle);
+            camera, yaxis);
         
         err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -210,9 +220,10 @@ void processInput(GLFWwindow *window)
         camera.handleKeyboardInput(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.handleKeyboardInput(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-        foo_debug();
-    }
+    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+        camera.handleKeyboardInput(UP, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+        camera.handleKeyboardInput(DOWN, deltaTime);
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -222,19 +233,23 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+// Process mouse movement
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
 
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
 
-void foo_debug() {
-    std::cout << "CAMERA ###" <<std::endl;
-    std::cout << "front [" << camera.front.x << ", " << camera.front.y << ", " << camera.front.z << "]" << std::endl;
-    std::cout << "right [" << camera.right.x << ", " << camera.right.y << ", " << camera.right.z << "]" << std::endl;
-    std::cout << "up    [" << camera.up.x << ", " << camera.up.y << ", " << camera.up.z << "]" << std::endl;
-    std::cout << "tplft [" << camera.topleft.x << ", " << camera.topleft.y << ", " << camera.topleft.z << "]" << std::endl;
-    std::cout << "pos   [" << camera.position.x << ", " << camera.position.y << ", " << camera.position.z << "]" << std::endl;
-    vec3 rayOrigin = camera.position;
-    vec3 rayDest = camera.topleft;
-    Ray ray(rayOrigin, rayDest - rayOrigin);
-    std::cout << "ray to topleft ###" <<std::endl;
-    std::cout << "ray ori [" << ray.origin.x << ", " << ray.origin.y << ", " << ray.origin.z << "]" << std::endl;
-    std::cout << "ray dir [" << ray.direction.x << ", " << ray.direction.y << ", " << ray.direction.z << "]" << std::endl;
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.handleMouseMovement(xoffset, yoffset);
 }
