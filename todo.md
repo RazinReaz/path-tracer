@@ -21,3 +21,11 @@
 
 - [ ] show the cube in the window from `obj` file
 - [ ] make sure to have a proper readme file so that others can download `glm` `glfw` and `glad` and run the code
+
+- [x] fix cuda opengl interop
+- [x] write a vec3 class that works on the GPU
+- [ ] refactor:
+    - [ ] remove `glm` from all files
+    - [ ] move the definitions from the `.cu` files to the `.h` files
+    - `camera.h` file needs major overhaul. if I don't include any `glm` functions, the other files that used only opengl will not work.
+- [ ] `alignas(16)` for warp efficiency?

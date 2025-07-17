@@ -5,6 +5,8 @@ bin/
 *.exe
 *.out
 
+*.txt
+
 # Ignore dependency libraries (if not part of the repo)
 dependencies/
 

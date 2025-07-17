@@ -9,9 +9,15 @@
 
 #include <iostream>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+
+#include "shader.h"
+#include "math/vec3.h"
+#include "ray-tracer/ray.h"
+#include "ray-tracer/triangle.h"
+#include "ray-tracer/camera.h"
+
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
 
 #define DIM 512
 
@@ -20,62 +26,32 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
-const char* vertexShaderSrc = R"(
-    #version 330 core
-    out vec2 texCoord;
-    void main() {
-        const vec2 pos[3] = vec2[3](
-            vec2(-1.0, -1.0),
-            vec2( 3.0, -1.0),
-            vec2(-1.0,  3.0)
-        );
-        gl_Position = vec4(pos[gl_VertexID], 0.0, 1.0);
-        texCoord = (gl_Position.xy + 1.0) * 0.5;
-    }
-)";
+const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
+const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
+
+void __global__ kernel(uchar4 *ptr, Triangle tri) {
+	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
+	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
+    if (pixelx >= DIM || pixely >= DIM) return;
+	int offset = pixelx + pixely * DIM;
     
-const char* fragmentShaderSrc = R"(
-    #version 330 core
-    out vec4 FragColor;
-    in vec2 texCoord;
-    uniform sampler2D tex;
-    void main() {
-        FragColor = texture(tex, texCoord);
+	float worldx = 2 * pixelx/(float)DIM - 1.0f;
+	float worldy = 2 * pixely/(float)DIM - 1.0f;
+    float worldz = 1.0f;
+    vec3 color;
+
+    Ray ray(vec3(worldx, worldy, worldz), vec3(0, 0, -1));
+    
+
+    tri.calculate_hit_by(ray);
+    if (ray.info.hit) {
+        color.r = 1.0f;
     }
-)";
 
-void __global__ kernel(uchar4 *ptr) {
-	int x = threadIdx.x + blockIdx.x * blockDim.x;
-	int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if (x >= DIM || y >= DIM) return;
-	int offset = x + y * DIM;
-
-	float fx = x/(float)DIM - 0.5f;
-	float fy = y/(float)DIM - 0.5f;
-	unsigned char green = 128 + 127 * sin(abs(fx * 100) - abs(fy * 100));
-
-	ptr[offset].x = 0;
-	ptr[offset].y = green;
-	ptr[offset].z = 0;
+	ptr[offset].x = color.r * 255;
+	ptr[offset].y = color.g * 255;
+	ptr[offset].z = color.b * 255;
 	ptr[offset].w = 255; 
-}
-
-GLuint createShaderProgram() {
-    auto compile = [](GLenum type, const char* src) {
-        GLuint s = glCreateShader(type);
-        glShaderSource(s, 1, &src, nullptr);
-        glCompileShader(s);
-        return s;
-    };
-    GLuint vs = compile(GL_VERTEX_SHADER, vertexShaderSrc);
-    GLuint fs = compile(GL_FRAGMENT_SHADER, fragmentShaderSrc);
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    return prog;
 }
 
 int main() {
@@ -105,13 +81,18 @@ int main() {
         return -1;
     }
     
-    GLuint vao, vbo;
+    GLuint vao;
     GLuint pbo;
     GLuint texture;
     cudaGraphicsResource* cuda_resource;
+
     
-    // shader and program
-    GLuint shader = createShaderProgram();
+
+    Shader shader(vertexShaderPath, fragmentShaderPath);
+    Triangle triangle(
+        vec3(-0.5, 0, 0), vec3(0.5, 0, 0), vec3(0, 0.5, 0),
+        vec3(0, 0, 1), vec3(0, 0, 1), vec3(0, 0, 1) 
+    );
 
     // init VAO
     glGenVertexArrays(1, &vao);
@@ -136,8 +117,9 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); //! why
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); //! why
 
-    glUseProgram(shader);
-    glUniform1i(glGetUniformLocation(shader, "tex"), 0);
+    shader.use();
+    shader.setInt("tex", 0);
+    // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
 
     while (!glfwWindowShouldClose(window)) {
@@ -159,14 +141,13 @@ int main() {
         
         dim3 blocksPerGrid((DIM + 15)/16, (DIM + 15)/16);
         dim3 threadsPerBlock(16, 16);
-        kernel<<<blocksPerGrid, threadsPerBlock>>>(device_pointer);
+        kernel<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, triangle);
         
         err = cudaGetLastError();
         if (err != cudaSuccess) {
             std::cerr << "CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
         }
         cudaDeviceSynchronize();
-
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -183,7 +164,7 @@ int main() {
         glfwPollEvents();            // Handle input events
     }
 
-    glDeleteProgram(shader);;
+    shader.del();
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
     cudaGraphicsUnregisterResource(cuda_resource);

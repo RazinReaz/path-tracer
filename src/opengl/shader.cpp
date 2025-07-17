@@ -125,32 +125,32 @@ void Shader::setFloat(const std::string &uniformVarName, float value) const
     glUniform1f(location, value);
 }
 
-void Shader::setMat4(const std::string &uniformVarName, glm::mat4 mat) const
-{
-    int location = glGetUniformLocation(ID, uniformVarName.c_str());
-    if (location == -1)
-    {
-        std::cerr << "ERROR::SHADER::UNIFORM::MATRIX::NOT_FOUND\n" << uniformVarName << std::endl;
-    }
-    glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
-}
+// void Shader::setMat4(const std::string &uniformVarName, glm::mat4 mat) const
+// {
+//     int location = glGetUniformLocation(ID, uniformVarName.c_str());
+//     if (location == -1)
+//     {
+//         std::cerr << "ERROR::SHADER::UNIFORM::MATRIX::NOT_FOUND\n" << uniformVarName << std::endl;
+//     }
+//     glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(mat));
+// }
 
-void Shader::setVec3(const std::string &uniformVarName, const float x, const float y, const float z) const
-{
-    int location = glGetUniformLocation(ID, uniformVarName.c_str());
-    if (location == -1)
-    {
-        std::cerr << "ERROR::SHADER::UNIFORM::VECTOR::NOT_FOUND\n" << uniformVarName << std::endl;
-    }
-    glUniform3fv(location, 1, glm::value_ptr(glm::vec3(x, y, z)));
-}
+// void Shader::setVec3(const std::string &uniformVarName, const float x, const float y, const float z) const
+// {
+//     int location = glGetUniformLocation(ID, uniformVarName.c_str());
+//     if (location == -1)
+//     {
+//         std::cerr << "ERROR::SHADER::UNIFORM::VECTOR::NOT_FOUND\n" << uniformVarName << std::endl;
+//     }
+//     glUniform3fv(location, 1, glm::value_ptr(glm::vec3(x, y, z)));
+// }
 
-void Shader::setVec3(const std::string &uniformVarName, const glm::vec3 vect) const
-{
-    int location = glGetUniformLocation(ID, uniformVarName.c_str());
-    if (location == -1)
-    {
-        std::cerr << "ERROR::SHADER::UNIFORM::VECTOR::NOT_FOUND\n" << uniformVarName << std::endl;
-    }
-    glUniform3fv(location, 1, glm::value_ptr(vect));
-}
+// void Shader::setVec3(const std::string &uniformVarName, const glm::vec3 vect) const
+// {
+//     int location = glGetUniformLocation(ID, uniformVarName.c_str());
+//     if (location == -1)
+//     {
+//         std::cerr << "ERROR::SHADER::UNIFORM::VECTOR::NOT_FOUND\n" << uniformVarName << std::endl;
+//     }
+//     glUniform3fv(location, 1, glm::value_ptr(vect));
+// }
