@@ -4,10 +4,14 @@
 #include <GLFW/glfw3.h>
 
 #include <cuda_runtime.h>
-// #include <cudagl.h>
 #include <cuda_gl_interop.h>
 
 #include <iostream>
+#include <vector>
+
+// for taking screenshots
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 #define DEBUG 1
 
@@ -16,31 +20,15 @@
 #include "ray-tracer/ray.h"
 #include "ray-tracer/triangle.h"
 #include "ray-tracer/camera.h"
-
-class Scene {
-    private:
-        Triangle **triangles;
-        size_t triangle_count;
-    public:
-        __device__ Scene(Triangle **triangles, size_t triangle_count)
-            : triangles(triangles), triangle_count(triangle_count) {}
-        __device__ void calculate_hit_by(Ray &ray);
-};
-
-__device__
-void Scene::calculate_hit_by(Ray &ray) {
-    for (size_t i = 0; i < triangle_count; ++i) {
-        triangles[i]->calculate_hit_by(ray);
-    }
-}
-
+#include "ray-tracer/scene.h"
+#include "utils/scene_loader.h"
 
 const int screenHeight = 512;
 const int screenWidth = 512;
 float aspect = screenWidth / screenHeight;
 float invWidth = 1.0f / screenWidth;
 float invHeight = 1.0f / screenHeight;
-Camera camera(vec3(0, 0, 2), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
+Camera camera(vec3(0, 0, 5), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
 float widthMultiplier = invWidth * camera.fullwidth;
 float heightMultiplier = invHeight * camera.fullheight;
 
@@ -50,17 +38,28 @@ float lastX = screenWidth / 2.0f;
 float lastY = screenHeight / 2.0f;
 bool firstMouse = true;
 
+bool screenshotTaken = false;
+
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
+const char *modelPath = "assets/models/suzanne/suzanne.obj";
 
-void __global__ render(uchar4 *ptr, const int w, const int h, const float wMult, const float hMult, Camera cam, Scene **scene) {
+// __global__ vec3 skyColor(0.63, 0.85, 0.92);
+
+void __global__ render(
+    uchar4 *ptr, 
+    const int w, const int h, 
+    const float wMult, const float hMult, 
+    Camera camera, Scene *d_scene) 
+{
 	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
 	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
     if (pixelx >= w || pixely >= h) return;
@@ -69,42 +68,28 @@ void __global__ render(uchar4 *ptr, const int w, const int h, const float wMult,
     float u = (float)pixelx * wMult;
     float v = (float)pixely * hMult;
 
-    vec3 rayOrigin = cam.position;
-    vec3 rayDest = cam.bottomleft + u * cam.right + v * cam.up;
+    vec3 rayOrigin = camera.position;
+    vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
     Ray ray(rayOrigin, rayDest - rayOrigin);
 
-    vec3 color;
+    vec3 attenuation(1, 1, 1), color(0, 0, 0);
 
-    (*scene)->calculate_hit_by(ray);
+    d_scene->calculate_hit_by(ray);
+
     if (ray.info.hit) {
-        color.r = 1.0f;
+        vec3 norm = ray.info.norm;
+        color.r = 0.5f * (norm.x + 1.0f);
+        color.g = 0.5f * (norm.y + 1.0f);
+        color.b = 0.5f * (norm.z + 1.0f);
+    } else {
+        float t = 0.5f * (ray.direction.y + 1.0f); 
+        color = (1.0f - t) * vec3(1.0f, 1.0f, 1.0f) + t * vec3(0.5f, 0.7f, 1.0f); 
     }
 
-	ptr[offset].x = color.r * 255;
-	ptr[offset].y = color.g * 255;
-	ptr[offset].z = color.b * 255;
-	ptr[offset].w = 255; 
+	ptr[offset] = make_uchar4(color.r * 255, color.g * 255, color.b * 255, 255);
 }
 
-__global__ void create_scene(Triangle **list, Scene **scene) {
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        *(list) = new Triangle(
-            vec3(-2.0f, 0.0f, -2.0f), vec3(-2.0f, 0.0f, 2.0f), vec3(2.0f, 0.0f, -2.0f),
-            vec3(0, 1, 0), vec3(0, 1, 0), vec3(0, 1, 0)
-        );
-        *(list + 1) = new Triangle(
-            vec3(2.0f, 0.0f, -2.0f), vec3(-2.0f, 0.0f, 2.0f), vec3(2.0f, 0.0f, 2.0f),
-            vec3(0, 1, 0), vec3(0, 1, 0), vec3(0, 1, 0)
-        );
-        *scene = new Scene(list, 2);
-    }
-}
 
-__global__ void free_scene(Triangle **list, Scene **scene) {
-    delete *(list);
-    delete *(list + 1);
-    delete *(scene);
-}
 
 int main() {
     if (!glfwInit())
@@ -142,12 +127,13 @@ int main() {
 
     Shader shader(vertexShaderPath, fragmentShaderPath);
 
-    Triangle **d_triangleList;
-    Scene **d_scene;
+    Triangle *d_triangles;
+    Scene *d_scene;
+    std::cout << "loading model from " << modelPath << std::endl;
+    std::vector<Triangle> h_triangles = loadTrianglesFromOBJ(modelPath);
+    std::cout << "uploading scene to GPU"<< std::endl;
+    uploadSceneToGPU(h_triangles, &d_triangles, &d_scene);
 
-    cudaMalloc((void **) &d_triangleList, 2 * sizeof(Triangle*));
-    cudaMalloc((void **) &d_scene, sizeof(Scene*));
-    create_scene<<<1,1>>>(d_triangleList, d_scene);
 
     // init VAO
     glGenVertexArrays(1, &vao);
@@ -211,9 +197,7 @@ int main() {
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
     cudaGraphicsUnregisterResource(cuda_resource);
-    free_scene<<<1, 1>>>(d_triangleList, d_scene);
-    cudaFree(d_triangleList);
-    cudaFree(d_scene);
+    freeSceneFromGPU(d_triangles, d_scene);
     glfwDestroyWindow(window); //! order of operation correct?
     glfwTerminate();
         
@@ -233,10 +217,13 @@ void processInput(GLFWwindow *window)
         camera.handleKeyboardInput(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.handleKeyboardInput(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
-        camera.handleKeyboardInput(UP, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
-        camera.handleKeyboardInput(DOWN, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !screenshotTaken) {
+        takeScreenshot(window, "./assets/screenshots/screenshot.png");
+        screenshotTaken = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE) {
+        screenshotTaken = false;
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
@@ -265,4 +252,30 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastY = ypos;
 
     camera.handleMouseMovement(xoffset, yoffset);
+}
+
+
+
+
+void takeScreenshot(GLFWwindow *window, const std::string &filename)
+{
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    std::vector<unsigned char> pixels(3 * width * height);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1); // Ensure tight packing
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    // Flip vertically (OpenGL's origin is bottom-left, most images are top-left)
+    for (int j = 0; j < height / 2; ++j)
+    {
+        for (int i = 0; i < width * 3; ++i)
+        {
+            std::swap(pixels[j * width * 3 + i], pixels[(height - 1 - j) * width * 3 + i]);
+        }
+    }
+
+    stbi_write_png(filename.c_str(), width, height, 3, pixels.data(), width * 3);
+    std::cout << "Screenshot saved to: " << filename << std::endl;
 }

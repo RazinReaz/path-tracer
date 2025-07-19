@@ -34,7 +34,7 @@ public:
 };
 
 #define PI acos(-1)
-#define epsilon 1e-09
+
 
 ///////////////////////////////
 //     old implementation    //
@@ -100,6 +100,7 @@ __host__ __device__ __forceinline__ float vec3::dot(const vec3 &v) const
 __host__ __device__ __forceinline__ vec3 vec3::rotate(float angle, const vec3 &axis)
 {
     // rotate vector about axis by angle
+    const float epsilon = 1e-09f;
     // Rodrigues' rotation formula
     vec3 v = *this;
     vec3 a = axis.normalize();

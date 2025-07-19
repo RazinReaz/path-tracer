@@ -16,3 +16,14 @@ I fixed it by removing `glm` altogether. Defined a new class by myself that work
 firstly, everything was flipped. `A` went right, `D` went left. pressing `W` made the triangle smaller. but the shrinking was not uniform. i realized that even though the position of the camera was changing, the `topleft` corner vector was not. so, the fov of the rays became larger and the total percentageof the rays that hit the triangle became very low and the triangle appeared small.
 then, after fixing that, i noticed that the y axis was still flipped. pageup made me go down even though printing out the position showed y is increasing. so did the mouse movement and everything else.
 then, after assigning the color of the pixel according to the y values, I saw that the lower values were darker. So, I learned that **in CUDA, the y values increase from down to up. Not like traditional C indexing where the rows go from top to bottom.** 
+
+## Next steps
+- Now my program can support multiple triangles. I had this confusion about why the scene had to be a double pointer. I still don't understand it. ChatGPT is not great as a learning tool (or I just can't prompt for shit)
+- load from wavefront obj files **DONE**
+Today I used `tinyobjloader` to load the obj into the scene.The hardest part was to learn how to put the array of triangles and the scene data pointers to the gpu. difficulty 5/10. But I was stuck for a while just because I didn't put a semicolon in.
+I loaded the `suzanne` monkey, implemented sky color and drew the surface using color from normals.
+I also wrote feature for taking screenshots
+
+## look out for
+ - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 
+ ChatGPT said, since the camera is changing, I should not use `__constant__` or pass the pointer. dereferencing pointer takes up time.
