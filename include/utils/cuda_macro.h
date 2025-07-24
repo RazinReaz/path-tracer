@@ -1,3 +1,5 @@
+#pragma once 
+
 #define CUDA_CHECK(err)                                                                                 \
     if ((err) != cudaSuccess)                                                                           \
     {                                                                                                   \

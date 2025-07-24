@@ -15,6 +15,7 @@ public:
     __host__ __device__ __forceinline__ float length() const;
     __host__ __device__ __forceinline__ float length_squared() const;
     __host__ __device__ __forceinline__ vec3 normalize() const;
+    __host__ __device__ __forceinline__ void normalize_self();
     __host__ __device__ __forceinline__ vec3 cross(const vec3& v) const;
     __host__ __device__ __forceinline__ float dot(const vec3& v) const;
     __host__ __device__ __forceinline__ vec3 rotate(float angle, const vec3& axis);
@@ -31,9 +32,8 @@ public:
     __host__ __device__ __forceinline__ vec3& operator=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator+=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator-=(const vec3 &v);
+    __host__ __device__ __forceinline__ vec3 operator*=(const vec3 &v);
 };
-
-#define PI acos(-1)
 
 
 ///////////////////////////////
@@ -85,6 +85,12 @@ __host__ __device__ __forceinline__ vec3 vec3::normalize() const
 {
     float l = inverse_sqrt(x * x + y * y + z * z);
     return vec3(x * l, y * l, z * l);
+}
+
+__host__ __device__ __forceinline__ void vec3::normalize_self()
+{
+    float l = inverse_sqrt(x * x + y * y + z * z);
+    x *= l; y *= l; z *= l;
 }
 
 __host__ __device__ __forceinline__ vec3 vec3::cross(const vec3 &v) const
@@ -170,6 +176,14 @@ __host__ __device__ __forceinline__ vec3 vec3::operator-=(const vec3 &v)
     x -= v.x;
     y -= v.y;
     z -= v.z;
+    return *this;
+}
+
+__host__ __device__ __forceinline__ vec3 vec3::operator*=(const vec3 &v)
+{
+    x *= v.x;
+    y *= v.y;
+    z *= v.z;
     return *this;
 }
 

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "math/defines.h"
 #include "math/vec3.h"
 
-#define radians(deg) ((deg) * 3.14159f / 180.0f)
+
 
 enum Camera_Movement
 {
@@ -65,11 +66,10 @@ Camera::Camera(vec3 pos, vec3 up, float yaw, float pitch, float fov, float near,
 __host__ __device__
 void Camera::updateCameraVectors()
 {
-    vec3 direction;
-    direction.x = ::cosf(radians(yaw)) * ::cosf(radians(pitch));
-    direction.y = ::sinf(radians(pitch));
-    direction.z = ::sinf(radians(yaw)) * ::cosf(radians(pitch));
-    front = direction.normalize();
+    front.x = ::cosf(radians(yaw)) * ::cosf(radians(pitch));
+    front.y = ::sinf(radians(pitch));
+    front.z = ::sinf(radians(yaw)) * ::cosf(radians(pitch));
+    front.normalize_self();
     right = (front.cross(worldUp)).normalize();
     up = (right.cross(front)).normalize();
     bottomleft = position + front * near - up * halfheight - right * halfwidth;

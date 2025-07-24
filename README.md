@@ -24,6 +24,26 @@ Today I used `tinyobjloader` to load the obj into the scene.The hardest part was
 I loaded the `suzanne` monkey, implemented sky color and drew the surface using color from normals.
 I also wrote feature for taking screenshots
 
+## loading the Cornell box
+`The cornell box` obj file that I downloaded DOES NOT HAVE VERTEX NORMALS!!! instead, they defined quads and expects me to compute the normal. How do I know if they are oriented in counter clockwise direcction or not?? I think this a valid breakdown I am going through. Nevertheless, I (or chatGPT, although incorrectly) wrote the support for those kinds of files. There was a problem with the faces having gradient colors (weird), but I was not assigning the normal to the fourth vertex. assigning that vertext normal solved it. Now on to the materials.
+
+## Materials
+To simulate physically based light scattering, I have to generate uniformly distributed random unit vectors along a hemisphere, or according to sources, where the unit vectors are distributed more along the normal. I learned about cosine weighted sampling but I am trying to learn why it is physically based and why does that calculation generate vectors along the normal more densely.
+two steps:
+- firstly, we sample a point on a disk.
+- Then, we project that point on a unit sphere to get the final vector.
+### step 1: 
+we could sample two uniform RV `u`, `v`in [-1,1] and assign `r=u` and `theta=2*PI*v` to get polar coordinates $(r, \theta)$. but this will bundle the sampled points near the origin. Bcause r is being sampled uniformly, smaller values of r have the same probability of appearing as larger values of r. For the same change of theta, the points with smaller valued r will be closer together and the points with larger valued r will be further apart.
+Therefore, we need to take $r = \sqrt u$, so that the smaller values of `u` are transformed further into the radius of the disk. 
+### step 2: 
+this is easy. since we already have an $(x, y)$ on the disk, we can get $z$ from $\sqrt{1 - x^2 - y^2}$
+
+Next, since the hemisphere is aligned with the positive z axis, we need to transform that frame onto the surface normal. To do that, we can create an orthonormal basis with the normal as the z axis, and then scale the unit basis with the components of the random unit vector 
+$$v_x \times tangent_1 + v_y \times tangent_2 + v_z \times normal$$
+
+
+
 ## look out for
  - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 
  ChatGPT said, since the camera is changing, I should not use `__constant__` or pass the pointer. dereferencing pointer takes up time.
+ - if I am determining the type of material (metal, lambertian, dielectric) from the `.mtl` file values, then how do I determine the albedo? is it the ambient color or is it the diffuse color?

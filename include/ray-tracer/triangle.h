@@ -7,6 +7,7 @@ class Triangle {
 private:
     vec3 va, vb, vc; //vertices
     vec3 na, nb, nc; //normals
+    int material_index;
     __host__ __device__ vec3 interpolate_norm(const float u, const float v);
 
 public:
@@ -20,8 +21,9 @@ public:
 __host__ __device__
 Triangle::Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc,
                    const vec3 &na, const vec3 &nb, const vec3 &nc)
-    : va(va), vb(vb), vc(vc), na(na), nb(nb), nc(nc)
+    : va(va), vb(vb), vc(vc), na(na), nb(nb), nc(nc), material_index(0)
 {
+    //! RAZIN change material index later
 }
 
 __host__ __device__
@@ -31,7 +33,8 @@ Triangle::interpolate_norm(const float u, const float v)
     vec3 norm = (1 - u - v) * na 
     + u * nb 
     + v * nc;
-    return norm.normalize();
+    norm.normalize_self();
+    return norm;
 }
 
 __host__ __device__
@@ -67,6 +70,8 @@ Triangle::calculate_hit_by(Ray &ray)
     distance *= inv_det;
 
     vec3 normal = interpolate_norm(u, v);
-    ray.set_hit(distance, normal);
+    float dot = ray.direction.dot(normal);
+    if (dot > 0) normal = -1 * normal;
+    ray.set_hit(distance, normal, material_index);
     return;
 }

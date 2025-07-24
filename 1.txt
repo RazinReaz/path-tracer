@@ -1,2 +1,2 @@
 cd E:\Programming\Simulations\raytracing-gpu
-make run-cuda-1.cuda_opengl_interop
+make run-1.cuda_opengl_interop

@@ -67,13 +67,20 @@ $(BINDIR)/2.movement.run: src/test-cuda/2.movement.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/3.scene_load.run: src/test-cuda/3.scene_load.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
+$(BINDIR)/4.materials.run: src/test-cuda/4.materials.cu $(CPP_OBJ)
+	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 
+$(BINDIR)/test/random-unit-vector.run: src/test/random-unit-vector.cu
+	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
 
 
 run-%: $(BINDIR)/%.run
 	@echo "Running CUDA $<..."
 	@./$<
 
+run-test-%: $(BINDIR)/test/%.run
+	@echo "Running CUDA $<..."
+	@./$<
 
 # rm -f $(BINDIR)/* $(OBJDIR)/*.o
 clean:

@@ -21,10 +21,16 @@
 #include "ray-tracer/triangle.h"
 #include "ray-tracer/camera.h"
 #include "ray-tracer/scene.h"
+#include "ray-tracer/materials.h"
 #include "utils/scene_loader.h"
+#include "utils/cuda_macro.h"
 
 const int screenHeight = 512;
 const int screenWidth = 512;
+const int totalPixels = screenWidth * screenHeight;
+const int bounces = 1;
+const int SEED = 42;
+
 float aspect = screenWidth / screenHeight;
 float invWidth = 1.0f / screenWidth;
 float invHeight = 1.0f / screenHeight;
@@ -43,22 +49,31 @@ bool screenshotTaken = false;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *modelPath = "assets/models/CornellBox/CornellBox-Original.obj";
+// const char *modelPath = "assets/models/CornellBox/CornellBox-Original.obj";
+const char *modelPath = "assets/models/cube/cube.obj";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
-void __global__ render(
+__global__ void initialize_rng(curandState_t *states, unsigned long seed, int total) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx > total) return;
+    curand_init(seed, idx, 0, &states[idx]);
+}
+
+__global__
+void render(
     uchar4 *ptr, 
     const int w, const int h, 
     const float wMult, const float hMult, 
-    Camera camera, Scene *d_scene) 
+    Camera camera, 
+    Scene *d_scene, Material *d_materials, curandState_t *states,
+    int bounces) 
 {
 	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
 	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
@@ -72,19 +87,39 @@ void __global__ render(
     vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
     Ray ray(rayOrigin, rayDest - rayOrigin);
 
-    vec3 attenuation(1, 1, 1), color(0, 0, 0);
+    vec3 attenuation(1.0f, 1.0f, 1.0f), color(0.0f, 0.0f, 0.0f);
 
-    d_scene->calculate_hit_by(ray);
+    while(bounces--) {
+        d_scene->calculate_hit_by(ray);
+        if (!ray.info.hit) {
+            // vec3 d_skycolor(0.63, 0.85, 0.92);  //! RAZIN this should be changed 
+            // color += d_skycolor * attenuation;
+            color.r = 1.0f;
+            color.g = 0.7f;
+            color.b = 0.7f;
+            break;
+        }
+        // ray hit something
+        Material mat = d_materials[ray.info.mat_idx];
+        // attenuation *= mat.albedo;
+        // color += emission * attenuation // for later
+        color = mat.albedo;
 
-    if (ray.info.hit) {
-        vec3 norm = ray.info.norm;
-        color.r = 0.5f * (norm.x + 1.0f);
-        color.g = 0.5f * (norm.y + 1.0f);
-        color.b = 0.5f * (norm.z + 1.0f);
-    } else {
-        float t = 0.5f * (ray.direction.y + 1.0f); 
-        color = (1.0f - t) * vec3(1.0f, 1.0f, 1.0f) + t * vec3(0.5f, 0.7f, 1.0f); 
+        curandState_t state = states[offset];
+        bounce(ray, mat, &state);
+        states[offset] = state;
     }
+
+
+    // if (ray.info.hit) {
+    //     vec3 norm = ray.info.norm;
+    //     color.r = 0.5f * (norm.x + 1.0f);
+    //     color.g = 0.5f * (norm.y + 1.0f);
+    //     color.b = 0.5f * (norm.z + 1.0f);
+    // } else {
+    //     float t = 0.5f * (ray.direction.y + 1.0f); 
+    //     color = (1.0f - t) * vec3(1.0f, 1.0f, 1.0f) + t * vec3(0.5f, 0.7f, 1.0f); 
+    // }
 
 	ptr[offset] = make_uchar4(color.r * 255, color.g * 255, color.b * 255, 255);
 }
@@ -134,6 +169,32 @@ int main() {
     std::cout << "uploading scene to GPU"<< std::endl;
     uploadSceneToGPU(h_triangles, &d_triangles, &d_scene);
 
+    //curand stuff
+    curandState_t *d_states; //declare the states array
+    CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandState_t))); // allocate space in the GPU for the states array
+    initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
+    cudaDeviceSynchronize();
+    std::cout << "rng states successfully initialized" << std::endl;
+    
+
+
+    // // sky
+    // vec3 h_skycolor(0.63, 0.85, 0.92); // for example
+    // CUDA_CHECK(cudaMemcpyToSymbol(d_skycolor, &h_skycolor, sizeof(vec3)));
+    // std::cout << "Sky color successfully uploaded" << std::endl;
+    
+    
+    
+    // materials
+    Material *d_materials;
+    Material h_material;
+    // load materials array from obj
+    h_material.type = MaterialType::LAMBERTIAN;
+    h_material.albedo = vec3(0.0f, 0.5f, 0.0f); 
+    CUDA_CHECK(cudaMalloc(&d_materials, 1 * sizeof(Material)));
+    CUDA_CHECK(cudaMemcpy(d_materials, &h_material, 1 * sizeof(Material), cudaMemcpyHostToDevice));
+    std::cout << "Materials data copied to device" << std::endl;
+
 
     // init VAO
     glGenVertexArrays(1, &vao);
@@ -173,7 +234,8 @@ int main() {
         render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
             screenWidth, screenHeight, 
             widthMultiplier, heightMultiplier,
-            camera, d_scene);
+            camera, d_scene, d_materials, d_states,
+            bounces);
             
         cudaDeviceSynchronize();
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
@@ -197,6 +259,8 @@ int main() {
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
     cudaGraphicsUnregisterResource(cuda_resource);
+    cudaFree(d_states);
+    cudaFree(d_materials);
     freeSceneFromGPU(d_triangles, d_scene);
     glfwDestroyWindow(window); //! order of operation correct?
     glfwTerminate();
