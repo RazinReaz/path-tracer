@@ -28,7 +28,7 @@
 const int screenHeight = 512;
 const int screenWidth = 512;
 const int totalPixels = screenWidth * screenHeight;
-const int bounces = 1;
+const int bounces = 2;
 const int SEED = 42;
 
 float aspect = screenWidth / screenHeight;
@@ -90,36 +90,30 @@ void render(
     vec3 attenuation(1.0f, 1.0f, 1.0f), color(0.0f, 0.0f, 0.0f);
 
     while(bounces--) {
+        ray.reset_hit();
         d_scene->calculate_hit_by(ray);
         if (!ray.info.hit) {
-            // vec3 d_skycolor(0.63, 0.85, 0.92);  //! RAZIN this should be changed 
-            // color += d_skycolor * attenuation;
-            color.r = 1.0f;
-            color.g = 0.7f;
-            color.b = 0.7f;
+            vec3 d_skycolor(0.63, 0.85, 0.92);  //! RAZIN this should be changed 
+            color += d_skycolor * attenuation;
+            // color.r = 0.7f;
+            // color.g = 0.7f;
+            // color.b = 1.0f;
             break;
         }
         // ray hit something
         Material mat = d_materials[ray.info.mat_idx];
-        // attenuation *= mat.albedo;
-        // color += emission * attenuation // for later
-        color = mat.albedo;
+        attenuation *= mat.albedo;
+        color += mat.emission * attenuation;
 
+        
         curandState_t state = states[offset];
         bounce(ray, mat, &state);
         states[offset] = state;
+        
+        // color.r = 0.5f * (ray.direction.x + 1.0f);
+        // color.g = 0.5f * (ray.direction.y + 1.0f);
+        // color.b = 0.5f * (ray.direction.z + 1.0f);
     }
-
-
-    // if (ray.info.hit) {
-    //     vec3 norm = ray.info.norm;
-    //     color.r = 0.5f * (norm.x + 1.0f);
-    //     color.g = 0.5f * (norm.y + 1.0f);
-    //     color.b = 0.5f * (norm.z + 1.0f);
-    // } else {
-    //     float t = 0.5f * (ray.direction.y + 1.0f); 
-    //     color = (1.0f - t) * vec3(1.0f, 1.0f, 1.0f) + t * vec3(0.5f, 0.7f, 1.0f); 
-    // }
 
 	ptr[offset] = make_uchar4(color.r * 255, color.g * 255, color.b * 255, 255);
 }
@@ -189,8 +183,9 @@ int main() {
     Material *d_materials;
     Material h_material;
     // load materials array from obj
-    h_material.type = MaterialType::LAMBERTIAN;
-    h_material.albedo = vec3(0.0f, 0.5f, 0.0f); 
+    h_material.type = LAMBERTIAN;
+    h_material.albedo = vec3(1.0f, 0.2f, 0.2f); 
+    h_material.emission = vec3(0.1f, 0.1f, 0.1f); 
     CUDA_CHECK(cudaMalloc(&d_materials, 1 * sizeof(Material)));
     CUDA_CHECK(cudaMemcpy(d_materials, &h_material, 1 * sizeof(Material), cudaMemcpyHostToDevice));
     std::cout << "Materials data copied to device" << std::endl;

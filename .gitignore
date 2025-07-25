@@ -6,6 +6,7 @@ bin/
 *.out
 
 *.txt
+*.png
 
 # Ignore dependency libraries (if not part of the repo)
 dependencies/
