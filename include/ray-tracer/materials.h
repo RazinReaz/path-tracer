@@ -8,7 +8,7 @@
 
 enum MaterialType {
     LAMBERTIAN,
-    METAL,
+    METALLIC,
     EMISSIVE,
 };
 
@@ -37,14 +37,17 @@ void scatter_ray(Ray& ray, curandState_t *state)
 __device__ 
 Ray bounce(Ray &ray, Material &material, curandState_t *state)
 {
+    // handles LAMBERTIAN and METALLIC materials
     switch (material.type) {
-        case LAMBERTIAN:
+        case MaterialType::LAMBERTIAN:
+            scatter_ray(ray, state);
+            break;
+        case MaterialType::EMISSIVE:
             scatter_ray(ray, state);
             break;
         default:
             // For now, we only handle Lambertian materials
             // Other materials can be added later
-            ray.set_origin_and_direction(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
             break;
     }
     return ray;

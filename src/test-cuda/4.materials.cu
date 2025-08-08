@@ -28,13 +28,12 @@
 const int screenHeight = 512;
 const int screenWidth = 512;
 const int totalPixels = screenWidth * screenHeight;
-const int bounces = 2;
-const int SEED = 42;
-
 float aspect = screenWidth / screenHeight;
 float invWidth = 1.0f / screenWidth;
 float invHeight = 1.0f / screenHeight;
-Camera camera(vec3(0, 0, 5), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
+
+// Camera parameters
+Camera camera(vec3(0, 1, 3), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
 float widthMultiplier = invWidth * camera.fullwidth;
 float heightMultiplier = invHeight * camera.fullheight;
 
@@ -46,6 +45,9 @@ bool firstMouse = true;
 
 bool screenshotTaken = false;
 
+const int bounces = 20;
+const int SEED = 42;
+int frameCount = 0;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -55,8 +57,10 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-// const char *modelPath = "assets/models/CornellBox/CornellBox-Original.obj";
-const char *modelPath = "assets/models/cube/cube.obj";
+const char *mtlBasePath = "assets/models/test/";
+const char *modelObjPath = "assets/models/test/CornellBox-Original.obj";
+// const char *modelObjPath = "assets/models/cube/cube.obj";
+// const char *mtlBasePath = "assets/models/cube/";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
@@ -73,52 +77,68 @@ void render(
     const float wMult, const float hMult, 
     Camera camera, 
     Scene *d_scene, Material *d_materials, curandState_t *states,
-    int bounces) 
+    int bounces,
+    float *d_framebuffer, float weight
+) 
 {
 	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
 	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
     if (pixelx >= w || pixely >= h) return;
 	int offset = pixelx + pixely * w;
 
-    float u = (float)pixelx * wMult;
-    float v = (float)pixely * hMult;
+    curandState_t state = states[offset];
+
+    float u = ((float)pixelx + curand_uniform(&state)) * wMult;
+    float v = ((float)pixely + curand_uniform(&state)) * hMult;
 
     vec3 rayOrigin = camera.position;
     vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
     Ray ray(rayOrigin, rayDest - rayOrigin);
 
-    vec3 attenuation(1.0f, 1.0f, 1.0f), color(0.0f, 0.0f, 0.0f);
+    vec3 attenuation(1.0f, 1.0f, 1.0f), light(0.0f, 0.0f, 0.0f);
 
     while(bounces--) {
         ray.reset_hit();
         d_scene->calculate_hit_by(ray);
         if (!ray.info.hit) {
-            vec3 d_skycolor(0.63, 0.85, 0.92);  //! RAZIN this should be changed 
-            color += d_skycolor * attenuation;
-            // color.r = 0.7f;
-            // color.g = 0.7f;
-            // color.b = 1.0f;
+            vec3 d_skycolor(0.1f, 0.1f, 0.1f);  //! this should be changed 
+            // vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
+            light += d_skycolor * attenuation;
             break;
         }
-        // ray hit something
+        // Russian Roulette
         Material mat = d_materials[ray.info.mat_idx];
-        attenuation *= mat.albedo;
-        color += mat.emission * attenuation;
+        // vec3 alb = mat.albedo;
+        // float p = max(max(alb.r, alb.g), alb.b);
+        // if (curand_uniform(&state) < p) {
+        //     light += mat.emission * attenuation;
+        //     break;
+        // }
 
-        
-        curandState_t state = states[offset];
+        attenuation *= mat.albedo;
+        light += mat.emission * attenuation;  //! this should be changed
+
+        state = states[offset];
         bounce(ray, mat, &state);
         states[offset] = state;
-        
-        // color.r = 0.5f * (ray.direction.x + 1.0f);
-        // color.g = 0.5f * (ray.direction.y + 1.0f);
-        // color.b = 0.5f * (ray.direction.z + 1.0f);
     }
+    // write to framebuffer
+    int base = offset * 3;
+    d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
+    d_framebuffer[base + 1] = d_framebuffer[base + 1] * (1.0f - weight) + light.g * weight;
+    d_framebuffer[base + 2] = d_framebuffer[base + 2] * (1.0f - weight) + light.b * weight;
 
-	ptr[offset] = make_uchar4(color.r * 255, color.g * 255, color.b * 255, 255);
+    ptr[offset] = make_uchar4(
+        fminf(255.0f, d_framebuffer[base + 0] * 255.0f), 
+        fminf(255.0f, d_framebuffer[base + 1] * 255.0f),
+        fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
+        255
+    );
 }
 
-
+void resetFrameCount() {
+    frameCount = 1;
+}
 
 int main() {
     if (!glfwInit())
@@ -149,19 +169,32 @@ int main() {
     }
 
 
-    GLuint vao;
-    GLuint pbo;
-    GLuint texture;
-    cudaGraphicsResource* cuda_resource;
+    
 
     Shader shader(vertexShaderPath, fragmentShaderPath);
 
     Triangle *d_triangles;
     Scene *d_scene;
-    std::cout << "loading model from " << modelPath << std::endl;
-    std::vector<Triangle> h_triangles = loadTrianglesFromOBJ(modelPath);
-    std::cout << "uploading scene to GPU"<< std::endl;
+    std::vector<Triangle> h_triangles;
+    std::vector<Material> h_materials;
+    std::cout << "loading model from " << modelObjPath << std::endl;
+
+    loadTrianglesAndMaterialsFromOBJ(modelObjPath, mtlBasePath, h_triangles, h_materials);
     uploadSceneToGPU(h_triangles, &d_triangles, &d_scene);
+    std::cout << "Scene successfully upload to GPU"<< std::endl;
+
+    // materials
+    // load materials array from obj
+    Material *d_materials;
+    size_t materialCount = h_materials.size();
+    if (materialCount == 0) {
+        std::cerr << "No materials found in the model. Exiting." << std::endl;
+        //TODO: if no materials then define default ones?
+        return -1;
+    }
+    CUDA_CHECK(cudaMalloc(&d_materials, materialCount * sizeof(Material)));
+    CUDA_CHECK(cudaMemcpy(d_materials, h_materials.data(), materialCount * sizeof(Material), cudaMemcpyHostToDevice));
+    std::cout << "Materials successfully uploaded to GPU" << std::endl;
 
     //curand stuff
     curandState_t *d_states; //declare the states array
@@ -169,7 +202,12 @@ int main() {
     initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
     cudaDeviceSynchronize();
     std::cout << "rng states successfully initialized" << std::endl;
-    
+
+    // allocate memory for frame buffer
+    float *d_framebuffer;
+    CUDA_CHECK(cudaMalloc(&d_framebuffer, totalPixels * 3 * sizeof(float)));
+    CUDA_CHECK(cudaMemset(d_framebuffer, 0, totalPixels * 3 * sizeof(float)));
+    std::cout << "Framebuffer successfully allocated" << std::endl;
 
 
     // // sky
@@ -177,19 +215,11 @@ int main() {
     // CUDA_CHECK(cudaMemcpyToSymbol(d_skycolor, &h_skycolor, sizeof(vec3)));
     // std::cout << "Sky color successfully uploaded" << std::endl;
     
-    
-    
-    // materials
-    Material *d_materials;
-    Material h_material;
-    // load materials array from obj
-    h_material.type = LAMBERTIAN;
-    h_material.albedo = vec3(1.0f, 0.2f, 0.2f); 
-    h_material.emission = vec3(0.1f, 0.1f, 0.1f); 
-    CUDA_CHECK(cudaMalloc(&d_materials, 1 * sizeof(Material)));
-    CUDA_CHECK(cudaMemcpy(d_materials, &h_material, 1 * sizeof(Material), cudaMemcpyHostToDevice));
-    std::cout << "Materials data copied to device" << std::endl;
 
+    GLuint vao;
+    GLuint pbo;
+    GLuint texture;
+    cudaGraphicsResource* cuda_resource;
 
     // init VAO
     glGenVertexArrays(1, &vao);
@@ -224,16 +254,21 @@ int main() {
         cudaGraphicsMapResources(1, &cuda_resource, NULL);        
         cudaGraphicsResourceGetMappedPointer((void**)&device_pointer, &size, cuda_resource);
         
+        frameCount++;
+        float frameWeight = 1.0f / (float)frameCount;
         dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
         dim3 threadsPerBlock(16, 16);
         render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
             screenWidth, screenHeight, 
             widthMultiplier, heightMultiplier,
             camera, d_scene, d_materials, d_states,
-            bounces);
-            
+            bounces,
+            d_framebuffer, frameWeight
+        );
         cudaDeviceSynchronize();
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
+
+        // std::cout << "Rendering frame: " << frameCount << " with weight: " << frameWeight << std::endl;
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glActiveTexture(GL_TEXTURE0);
@@ -254,8 +289,9 @@ int main() {
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
     cudaGraphicsUnregisterResource(cuda_resource);
-    cudaFree(d_states);
-    cudaFree(d_materials);
+    CUDA_CHECK(cudaFree(d_states));
+    CUDA_CHECK(cudaFree(d_materials));
+    CUDA_CHECK(cudaFree(d_framebuffer));
     freeSceneFromGPU(d_triangles, d_scene);
     glfwDestroyWindow(window); //! order of operation correct?
     glfwTerminate();
@@ -266,16 +302,25 @@ int main() {
 
 void processInput(GLFWwindow *window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        resetFrameCount();
         camera.handleKeyboardInput(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        resetFrameCount();
         camera.handleKeyboardInput(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        resetFrameCount();
         camera.handleKeyboardInput(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        resetFrameCount();
         camera.handleKeyboardInput(RIGHT, deltaTime);
+    }
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !screenshotTaken) {
         takeScreenshot(window, "./assets/screenshots/screenshot.png");
         screenshotTaken = true;
@@ -295,6 +340,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 // Process mouse movement
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+    resetFrameCount(); // reset frame count on mouse movement
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
@@ -312,9 +358,6 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
     camera.handleMouseMovement(xoffset, yoffset);
 }
-
-
-
 
 void takeScreenshot(GLFWwindow *window, const std::string &filename)
 {

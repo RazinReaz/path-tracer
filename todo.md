@@ -30,7 +30,17 @@
     - `camera.h` file needs major overhaul. if I don't include any `glm` functions, the other files that used only opengl will not work.
 - [ ] `alignas(16)` for warp efficiency?
 - [ ] `camera` is global in `2.movement.cu`. A lot of global variables actually
-- [ ] should all camera functions be in device? I mean, the camera controls?
+- [x] should all camera functions be in device? I mean, the camera controls?
 - [x] fix the y flip bug
 - [ ] find out hist and device tips and tricks to boost performance
 - [ ] implement BVH on the global memory
+- [x] implement random unit vector
+    - 2d point on disk
+    - Malley's cosine distributed uniformly distributed random unit vector
+    - align the hemisphere along the normal
+- [x] implement materials
+    - [x] lambertian
+    - [x] emissive
+- [ ] **BUG** ray bounce on the edge of a triangle
+- [x] frame accumulation
+    - [x] **FIXED**: sky color gets overpowered rather than emissive power

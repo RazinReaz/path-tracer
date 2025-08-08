@@ -12,19 +12,19 @@ private:
 
 public:
     __host__ __device__
-    Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc, const vec3 &na, const vec3 &nb, const vec3 &nc);
+    Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc, const vec3 &na, const vec3 &nb, const vec3 &nc, int material_index);
     
     __host__ __device__
     void calculate_hit_by(Ray& ray);
 };
 
 __host__ __device__
-Triangle::Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc,
-                   const vec3 &na, const vec3 &nb, const vec3 &nc)
-    : va(va), vb(vb), vc(vc), na(na), nb(nb), nc(nc), material_index(0)
-{
-    //! RAZIN change material index later
-}
+Triangle::Triangle( const vec3 &va, const vec3 &vb, const vec3 &vc,
+                    const vec3 &na, const vec3 &nb, const vec3 &nc,
+                    int material_index
+                )
+    : va(va), vb(vb), vc(vc), na(na), nb(nb), nc(nc), material_index(material_index)
+{}
 
 __host__ __device__
 vec3

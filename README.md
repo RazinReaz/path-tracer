@@ -41,6 +41,9 @@ this is easy. since we already have an $(x, y)$ on the disk, we can get $z$ from
 Next, since the hemisphere is aligned with the positive z axis, we need to transform that frame onto the surface normal. To do that, we can create an orthonormal basis with the normal as the z axis, and then scale the unit basis with the components of the random unit vector 
 $$v_x \times tangent_1 + v_y \times tangent_2 + v_z \times normal$$
 
+# Anti-aliasing
+Just put some randomness into the ray direction so that it doesn't shoot the same point across frames
+
 
 
 ## look out for
