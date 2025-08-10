@@ -70,7 +70,12 @@
     "xtr1common": "cpp",
     "xutility": "cpp",
     "set": "cpp",
-    "xtree": "cpp"
+    "xtree": "cpp",
+    "chrono": "cpp",
+    "forward_list": "cpp",
+    "ratio": "cpp",
+    "codecvt": "cpp",
+    "filesystem": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }

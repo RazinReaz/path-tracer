@@ -116,6 +116,8 @@ void loadTrianglesAndMaterialsFromOBJ(
 }
 
 
+
+
 // std::vector<Triangle> loadTrianglesFromOBJ(const std::string &filename)
 // {
 //     tinyobj::attrib_t attrib;

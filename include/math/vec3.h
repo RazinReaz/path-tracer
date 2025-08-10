@@ -10,6 +10,7 @@ public:
     union {
         struct {float x, y, z, w;};
         struct {float r, g, b, w;};
+        float data[4];
     };
     __host__ __device__ inline vec3(float x = 0, float y = 0, float z = 0);
     __host__ __device__ __forceinline__ float length() const;

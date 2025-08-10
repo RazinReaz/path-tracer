@@ -1,7 +1,7 @@
 # CXX = g++
 # CXX_FLAGS = -std=c++17 -Wall -Wextra -I./src -Idependencies/include -Iinclude
 CXX = cl
-CXX_FLAGS = /std:c++17 /EHsc /W3 /I./src /Idependencies/include /Iinclude /MD
+CXX_FLAGS = /std:c++17 /EHsc /W3 /I./src /Idependencies/include /Iinclude /MD 
 GL_LIBS_LINUX = -lglfw -lGL -ldl
 GL_LIBS_WINDOWS = -Ldependencies/lib -lglfw3 -lopengl32 -lgdi32 -luser32 -lkernel32 -lshell32 -lcomdlg32 -ladvapi32 -lwinmm -lws2_32
 

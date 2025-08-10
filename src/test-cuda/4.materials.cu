@@ -8,6 +8,10 @@
 
 #include <iostream>
 #include <vector>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+
 
 // for taking screenshots
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -24,6 +28,7 @@
 #include "ray-tracer/materials.h"
 #include "utils/scene_loader.h"
 #include "utils/cuda_macro.h"
+#include "utils/renderStats.h"
 
 const int screenHeight = 512;
 const int screenWidth = 512;
@@ -45,7 +50,8 @@ bool firstMouse = true;
 
 bool screenshotTaken = false;
 
-const int bounces = 20;
+const int bounces = 5;
+const int spp = 1;
 const int SEED = 42;
 int frameCount = 0;
 
@@ -58,7 +64,7 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename);
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
 const char *mtlBasePath = "assets/models/test/";
-const char *modelObjPath = "assets/models/test/CornellBox-Original.obj";
+const char *modelObjPath = "assets/models/test/test.obj";
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 
@@ -77,7 +83,7 @@ void render(
     const float wMult, const float hMult, 
     Camera camera, 
     Scene *d_scene, Material *d_materials, curandState_t *states,
-    int bounces,
+    int bounces, int spp,
     float *d_framebuffer, float weight
 ) 
 {
@@ -88,40 +94,37 @@ void render(
 
     curandState_t state = states[offset];
 
-    float u = ((float)pixelx + curand_uniform(&state)) * wMult;
-    float v = ((float)pixely + curand_uniform(&state)) * hMult;
-
-    vec3 rayOrigin = camera.position;
-    vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
-    Ray ray(rayOrigin, rayDest - rayOrigin);
-
-    vec3 attenuation(1.0f, 1.0f, 1.0f), light(0.0f, 0.0f, 0.0f);
-
-    while(bounces--) {
-        ray.reset_hit();
-        d_scene->calculate_hit_by(ray);
-        if (!ray.info.hit) {
-            vec3 d_skycolor(0.1f, 0.1f, 0.1f);  //! this should be changed 
-            // vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
-            light += d_skycolor * attenuation;
-            break;
+    vec3 light(0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < spp; i++) {
+        float u = ((float)pixelx + curand_uniform(&state)) * wMult;
+        float v = ((float)pixely + curand_uniform(&state)) * hMult;
+        
+        vec3 rayOrigin = camera.position;
+        vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
+        Ray ray(rayOrigin, rayDest - rayOrigin);
+        
+        vec3  attenuation(1.0f, 1.0f, 1.0f);
+        int nBounces = bounces;
+        while(nBounces--) {
+            ray.reset_hit();
+            d_scene->calculate_hit_by(ray);
+            if (!ray.info.hit) {
+                // vec3 d_skycolor(0.1f, 0.1f, 0.1f);  //! this should be changed 
+                vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
+                light += d_skycolor * attenuation;
+                break;
+            }
+            Material mat = d_materials[ray.info.mat_idx];
+            // light += mat.albedo;
+            attenuation *= mat.albedo;
+            light += mat.emission * attenuation;  //! this should be changed
+            state = states[offset];
+            bounce(ray, mat, &state);
+            states[offset] = state;
         }
-        // Russian Roulette
-        Material mat = d_materials[ray.info.mat_idx];
-        // vec3 alb = mat.albedo;
-        // float p = max(max(alb.r, alb.g), alb.b);
-        // if (curand_uniform(&state) < p) {
-        //     light += mat.emission * attenuation;
-        //     break;
-        // }
-
-        attenuation *= mat.albedo;
-        light += mat.emission * attenuation;  //! this should be changed
-
-        state = states[offset];
-        bounce(ray, mat, &state);
-        states[offset] = state;
     }
+    light.scale(1.0f / spp);
+
     // write to framebuffer
     int base = offset * 3;
     d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
@@ -244,6 +247,9 @@ int main() {
     shader.setInt("tex", 0);
     // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
+
+    //For logging the results
+    RenderStats stats(h_triangles.size(), screenWidth, screenHeight, bounces, spp);
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -254,6 +260,10 @@ int main() {
         cudaGraphicsMapResources(1, &cuda_resource, NULL);        
         cudaGraphicsResourceGetMappedPointer((void**)&device_pointer, &size, cuda_resource);
         
+        //#######################################################
+        //################## stats start ########################
+        //#######################################################
+        stats.frameStart();
         frameCount++;
         float frameWeight = 1.0f / (float)frameCount;
         dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
@@ -262,13 +272,15 @@ int main() {
             screenWidth, screenHeight, 
             widthMultiplier, heightMultiplier,
             camera, d_scene, d_materials, d_states,
-            bounces,
+            bounces, spp,
             d_framebuffer, frameWeight
         );
         cudaDeviceSynchronize();
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
-
-        // std::cout << "Rendering frame: " << frameCount << " with weight: " << frameWeight << std::endl;
+        stats.frameEnd();
+        //#####################################################
+        //################## stats end ########################
+        //#####################################################
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glActiveTexture(GL_TEXTURE0);
@@ -284,7 +296,8 @@ int main() {
         glfwSwapBuffers(window);     // Swap double buffer
         glfwPollEvents();            // Handle input events
     }
-    
+    stats.saveLog("./logs");
+    takeScreenshot(window, "./logs");
     shader.del();
     glDeleteBuffers(1, &pbo);
     glDeleteTextures(1, &texture);
@@ -359,17 +372,17 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     camera.handleMouseMovement(xoffset, yoffset);
 }
 
-void takeScreenshot(GLFWwindow *window, const std::string &filename)
+void takeScreenshot(GLFWwindow *window, const std::string &folderPath)
 {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
     std::vector<unsigned char> pixels(3 * width * height);
 
-    glPixelStorei(GL_PACK_ALIGNMENT, 1); // Ensure tight packing
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
 
-    // Flip vertically (OpenGL's origin is bottom-left, most images are top-left)
+    // Flip vertically
     for (int j = 0; j < height / 2; ++j)
     {
         for (int i = 0; i < width * 3; ++i)
@@ -377,7 +390,19 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename)
             std::swap(pixels[j * width * 3 + i], pixels[(height - 1 - j) * width * 3 + i]);
         }
     }
+    // Generate timestamp for filename
+    std::time_t now = std::time(nullptr);
+    std::tm localTime;
+#ifdef _WIN32
+    localtime_s(&localTime, &now);
+#else
+    localtime_r(&now, &localTime);
+#endif
 
-    stbi_write_png(filename.c_str(), width, height, 3, pixels.data(), width * 3);
-    std::cout << "Screenshot saved to: " << filename << std::endl;
+    char buffer[64];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", &localTime);
+    std::string filePath = folderPath + "/screenshot_" + buffer + ".png";
+    // Save PNG
+    stbi_write_png(filePath.c_str(), width, height, 3, pixels.data(), width * 3);
+    std::cout << "Screenshot saved to: " << filePath << std::endl;
 }
