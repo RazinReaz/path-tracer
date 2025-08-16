@@ -5,12 +5,12 @@
 
 class Triangle {
 private:
+__host__ __device__ vec3 interpolate_norm(const float u, const float v);
+
+public:
     vec3 va, vb, vc; //vertices
     vec3 na, nb, nc; //normals
     int material_index;
-    __host__ __device__ vec3 interpolate_norm(const float u, const float v);
-
-public:
     __host__ __device__
     Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc, const vec3 &na, const vec3 &nb, const vec3 &nc, int material_index);
     

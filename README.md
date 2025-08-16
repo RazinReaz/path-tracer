@@ -44,6 +44,13 @@ $$v_x \times tangent_1 + v_y \times tangent_2 + v_z \times normal$$
 # Anti-aliasing
 Just put some randomness into the ray direction so that it doesn't shoot the same point across frames
 
+# loading a scene with 2000+ triangles
+the cornell box with sphere scene containes 2 spheres, each with a lot of trinagles. It will take a lot of time to iterate through them all. Exactly How much time? I don't know. So let's ask ChatGPT to generate a performance logger for my code.
+It will help me to see the difference in performance whenever I make any sort of upgrade to the system. Like the next one, Bounding VOlume Heirarchy
+
+# BVH (with morton code!)
+Yikes. [This video by Ten Minute Physics](https://www.youtube.com/watch?v=LAxHQZ8RjQ4) was very helpful. It showed that I can use morton codes of my triangles to sort of clump them together in terms of distance. They will be organized in a way so that I can build a BVH from them easily. But it still took me 2 days to wrap my head around with the questions in my head. What do I keep in the nodes of my bvh? i can't believe I want pointers back in my life! so, if I keep the left index of the triangle array in a node and the triangle count in a node, isn't that a waste of space? because my internal nodes don't need that information. Or does it? How does ray box intersection even work? how can I make the code GPU friendly? 
+It doesn't need saying that I spiralled. 
 
 
 ## look out for

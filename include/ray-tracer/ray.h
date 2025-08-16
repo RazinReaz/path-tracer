@@ -20,6 +20,13 @@ public:
     __host__ __device__ void set_hit(const float &distance, const vec3 &normal, const int& material_index);
     __host__ __device__ void set_origin_and_direction(const vec3& orig, const vec3& dir);
     __host__ __device__ void reset_hit();
+    
+    // Additional methods needed for BVH traversal
+    __host__ __device__ bool has_hit() const { return info.hit; }
+    __host__ __device__ float get_distance() const { return static_cast<float>(info.t); }
+    __host__ __device__ vec3 get_normal() const { return info.norm; }
+    __host__ __device__ int get_material_index() const { return info.mat_idx; }
+    
 private:
 public:
     vec3 origin;

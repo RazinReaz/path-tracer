@@ -3,13 +3,22 @@
 #include <math.h>
 #include <iostream>
 
-class vec3 {
+class vec3
+{
 private:
     __host__ __device__ float inverse_sqrt(const float number) const;
+
 public:
-    union {
-        struct {float x, y, z, w;};
-        struct {float r, g, b, w;};
+    union
+    {
+        struct
+        {
+            float x, y, z, w;
+        };
+        struct
+        {
+            float r, g, b, w;
+        };
         float data[4];
     };
     __host__ __device__ inline vec3(float x = 0, float y = 0, float z = 0);
@@ -17,9 +26,9 @@ public:
     __host__ __device__ __forceinline__ float length_squared() const;
     __host__ __device__ __forceinline__ vec3 normalize() const;
     __host__ __device__ __forceinline__ void normalize_self();
-    __host__ __device__ __forceinline__ vec3 cross(const vec3& v) const;
-    __host__ __device__ __forceinline__ float dot(const vec3& v) const;
-    __host__ __device__ __forceinline__ vec3 rotate(float angle, const vec3& axis);
+    __host__ __device__ __forceinline__ vec3 cross(const vec3 &v) const;
+    __host__ __device__ __forceinline__ float dot(const vec3 &v) const;
+    __host__ __device__ __forceinline__ vec3 rotate(float angle, const vec3 &axis);
     __host__ __device__ __forceinline__ vec3 scale(float sx, float sy, float sz);
     __host__ __device__ __forceinline__ vec3 scale(float s);
     __host__ __device__ __forceinline__ bool near_zero() const;
@@ -30,12 +39,11 @@ public:
     __host__ __device__ __forceinline__ vec3 operator*(const vec3 &v) const;
     __host__ __device__ __forceinline__ vec3 operator/(const float scalar) const;
     __host__ __device__ __forceinline__ vec3 operator/(const vec3 &v) const;
-    __host__ __device__ __forceinline__ vec3& operator=(const vec3 &v);
+    __host__ __device__ __forceinline__ vec3 &operator=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator+=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator-=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator*=(const vec3 &v);
 };
-
 
 ///////////////////////////////
 //     old implementation    //
@@ -59,18 +67,19 @@ public:
 
 __host__ __device__ float vec3::inverse_sqrt(const float x) const
 {
-    #if defined(__CUDA_ARCH__)
-        // Device code: use fast CUDA intrinsic
-        return rsqrtf(x);
-    #else
-        // Host code: use standard math
-        return 1.0f / sqrtf(x);
-    #endif
+#if defined(__CUDA_ARCH__)
+    // Device code: use fast CUDA intrinsic
+    return rsqrtf(x);
+#else
+    // Host code: use standard math
+    return 1.0f / sqrtf(x);
+#endif
 }
 
 __host__ __device__ inline vec3::vec3(float x, float y, float z)
     : x(x), y(y), z(z), w(1)
-{}
+{
+}
 
 __host__ __device__ __forceinline__ float vec3::length() const
 {
@@ -91,7 +100,9 @@ __host__ __device__ __forceinline__ vec3 vec3::normalize() const
 __host__ __device__ __forceinline__ void vec3::normalize_self()
 {
     float l = inverse_sqrt(x * x + y * y + z * z);
-    x *= l; y *= l; z *= l;
+    x *= l;
+    y *= l;
+    z *= l;
 }
 
 __host__ __device__ __forceinline__ vec3 vec3::cross(const vec3 &v) const
@@ -137,7 +148,8 @@ __host__ __device__ __forceinline__ vec3 vec3::operator*(const float scalar) con
     return vec3(x * scalar, y * scalar, z * scalar);
 }
 // this is not a member function
-__host__ __device__ __forceinline__ vec3 operator*(const float scalar, const vec3 &v) {
+__host__ __device__ __forceinline__ vec3 operator*(const float scalar, const vec3 &v)
+{
     return vec3(v.x * scalar, v.y * scalar, v.z * scalar);
 }
 
@@ -156,7 +168,7 @@ __host__ __device__ __forceinline__ vec3 vec3::operator/(const vec3 &v) const
     return vec3(x / v.x, y / v.y, z / v.z);
 }
 
-__host__ __device__ __forceinline__ vec3& vec3::operator=(const vec3 &v)
+__host__ __device__ __forceinline__ vec3 &vec3::operator=(const vec3 &v)
 {
     x = v.x;
     y = v.y;
@@ -203,9 +215,9 @@ __host__ __device__ __forceinline__ vec3 vec3::scale(float s)
     return *this;
 }
 
-
 // ostream overload for printing vec3
-inline std::ostream& operator<<(std::ostream& os, const vec3& v) {
+inline std::ostream &operator<<(std::ostream &os, const vec3 &v)
+{
     os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
     return os;
 }

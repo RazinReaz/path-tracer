@@ -69,8 +69,17 @@ $(BINDIR)/3.scene_load.run: src/test-cuda/3.scene_load.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/4.materials.run: src/test-cuda/4.materials.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
+$(BINDIR)/5.bvh.run: src/test-cuda/5.bvh.cu $(CPP_OBJ)
+	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 
 $(BINDIR)/test/random-unit-vector.run: src/test/random-unit-vector.cu
+	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
+
+# BVH test targets
+$(BINDIR)/test_bvh.run: src/test/test_bvh.cu
+	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
+
+$(BINDIR)/benchmark_bvh.run: src/benchmark/benchmark_bvh.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
 
 
@@ -82,7 +91,23 @@ run-test-%: $(BINDIR)/test/%.run
 	@echo "Running CUDA $<..."
 	@./$<
 
+# BVH test run targets
+run-bvh-test: $(BINDIR)/test_bvh.run
+	@echo "Running BVH test..."
+	@./$<
+
+run-bvh-simple: $(BINDIR)/test/test_bvh_simple.run
+	@echo "Running simple BVH test..."
+	@./$<
+
+run-bvh-benchmark: $(BINDIR)/benchmark_bvh.run
+	@echo "Running BVH benchmark..."
+	@./$<
+
 # rm -f $(BINDIR)/* $(OBJDIR)/*.o
 clean:
-	@if exist "$(BINDIR)" del /Q "$(BINDIR)\*"
-	@for /R "$(OBJDIR)" %%f in (*.obj) do del "%%f"
+	@if exist "$(BINDIR)" (
+		@rmdir /S /Q "$(BINDIR)"
+		@mkdir "$(BINDIR)"
+	)
+	# @for /R "$(OBJDIR)" %%f in (*.obj) do del "%%f" 2>nul

@@ -25,6 +25,25 @@ __device__ inline vec3 random_vec_on_disk(curandState_t *state) {
     return vec3(r * cosf(theta), r * sinf(theta), 0.0f);
 }
 
+
+// __device__ inline vec3 random_unit_vec3(curandState_t *state) {
+//     // Uniform random unit vector in 3D (spherical coordinates)
+//     float z = curand_uniform(state) * 2.0f - 1.0f;  // [-1, 1]
+//     float a = curand_uniform(state) * 2.0f * PI; // [0, 2π]
+//     float r = sqrtf(fmaxf(0.0f, 1.0f - z * z));
+//     return vec3(r * cosf(a), r * sinf(a), z);
+// }
+
+// __device__ inline vec3 biased_unit_vec3_on_hemisphere(curandState_t *state) {
+//     vec3 zAxis(0.0f, 0.0f, 1.0f);
+//     vec3 candidate;
+//     do {
+//         candidate = random_unit_vec3(state) + zAxis;
+//     } while (candidate.length_squared() < 1e-6f); // Avoid near-zero vectors
+
+//     return candidate.normalize();
+// }
+
 __device__ inline vec3 unit_vec3_on_hemisphere(curandState_t *state){
     // give us an uniformly distributed random unit 3d vector on a hemisphere on the xy plane 
     // uses Malley's cosine weighted sampling technique
@@ -50,3 +69,6 @@ __device__ vec3 scatter_along(vec3 normal, curandState_t *state) {
     dir = rotate_to_align_hemiZ_to_normal(dir, normal);
     return dir;
 }
+
+
+
