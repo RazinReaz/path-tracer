@@ -76,10 +76,13 @@ $(BINDIR)/test/random-unit-vector.run: src/test/random-unit-vector.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
 
 # BVH test targets
-$(BINDIR)/test_bvh.run: src/test/test_bvh.cu
+$(BINDIR)/test/test_bvh.run: src/test/test_bvh.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
 
-$(BINDIR)/benchmark_bvh.run: src/benchmark/benchmark_bvh.cu
+$(BINDIR)/test_traverse_tree.run: src/test/test_traverse_tree.cu
+	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
+
+$(BINDIR)/benchmark/benchmark_bvh.run: src/benchmark/benchmark_bvh.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
 
 
@@ -92,22 +95,18 @@ run-test-%: $(BINDIR)/test/%.run
 	@./$<
 
 # BVH test run targets
-run-bvh-test: $(BINDIR)/test_bvh.run
+run-bvh-test: $(BINDIR)/test/test_bvh.run
 	@echo "Running BVH test..."
 	@./$<
 
-run-bvh-simple: $(BINDIR)/test/test_bvh_simple.run
-	@echo "Running simple BVH test..."
+run-traverse-tree-test: $(BINDIR)/test_traverse_tree.run
+	@echo "Running traverseTree test..."
 	@./$<
 
-run-bvh-benchmark: $(BINDIR)/benchmark_bvh.run
+run-bvh-benchmark: $(BINDIR)/benchmark/benchmark_bvh.run
 	@echo "Running BVH benchmark..."
 	@./$<
 
 # rm -f $(BINDIR)/* $(OBJDIR)/*.o
 clean:
-	@if exist "$(BINDIR)" (
-		@rmdir /S /Q "$(BINDIR)"
-		@mkdir "$(BINDIR)"
-	)
-	# @for /R "$(OBJDIR)" %%f in (*.obj) do del "%%f" 2>nul
+	@if exist $(BINDIR) (for /R $(BINDIR) %%f in (*.run) do del "%%f")

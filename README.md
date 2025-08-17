@@ -51,6 +51,17 @@ It will help me to see the difference in performance whenever I make any sort of
 # BVH (with morton code!)
 Yikes. [This video by Ten Minute Physics](https://www.youtube.com/watch?v=LAxHQZ8RjQ4) was very helpful. It showed that I can use morton codes of my triangles to sort of clump them together in terms of distance. They will be organized in a way so that I can build a BVH from them easily. But it still took me 2 days to wrap my head around with the questions in my head. What do I keep in the nodes of my bvh? i can't believe I want pointers back in my life! so, if I keep the left index of the triangle array in a node and the triangle count in a node, isn't that a waste of space? because my internal nodes don't need that information. Or does it? How does ray box intersection even work? how can I make the code GPU friendly? 
 It doesn't need saying that I spiralled. 
+Ok so back again to it after seeing something on instagram saying that I just need to make it exist first and make it perfect later. So, I wanna do non-consecutive children. After thinking about it for a while the code came pretty easy, but with a lot of corner cases, like:
+- the `parent` being updated but the corresponding node in the array wasn't
+- if the split position was the first index of the array, then the nex recursive call would have `begin == 0` and `end == -1`
+- I am torn between building deeper trees vs keeping the triangles in a leaf if their morton codes are the same. Going deeper might increase the performance but will need more space.\
+
+Now I need to code the traversal of the bvh, integrate it into my path tracer, and then try to make it CUDA friendly
+
+okay so moment of truth!
+![First attempt at BVH](./assets/screenshots/bvh_1.png)
+Something doesn't seem to be right
+
 
 
 ## look out for

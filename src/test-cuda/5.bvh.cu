@@ -83,7 +83,8 @@ void render(
     const int w, const int h, 
     const float wMult, const float hMult, 
     Camera camera, 
-    Scene *d_scene, Material *d_materials, curandState_t *states,
+    Triangle *d_triangles, bvhNode *d_bvh,
+     Material *d_materials, curandState_t *states,
     int bounces, int spp,
     float *d_framebuffer, float weight
 ) 
@@ -108,34 +109,42 @@ void render(
         int nBounces = bounces;
         while(nBounces--) {
             ray.reset_hit();
-            d_scene->calculate_hit_by(ray);
-            if (!ray.info.hit) {
-                vec3 d_skycolor(0.1f, 0.1f, 0.1f);  //! this should be changed 
-                // vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
-                light += d_skycolor * attenuation;
+            int nodeIndex = traverseTree(d_bvh, ray);
+            if (nodeIndex == -1) {
+                light += vec3(0.1f, 0.1f, 0.1f);
                 break;
             }
-            Material mat = d_materials[ray.info.mat_idx];
-
-            attenuation *= mat.albedo;
-            light += mat.emission * attenuation;  //! this should be changed
-            state = states[offset];
-            bounce(ray, mat, &state);
-            states[offset] = state;
+            int begin = d_bvh[nodeIndex].triangleIndex, end = begin + d_bvh[nodeIndex].triangleCount;
+            for (int i = begin; i < end; i++) {
+                d_triangles[i].calculate_hit_by(ray);
+            }
+            if (!ray.info.hit) {
+                light += vec3(0.0f, 0.2f, 0.2f);
+                break;
+            }
+            light += vec3(0.8f, 0.8f, 0.8f);
+            
         }
     }
     light.scale(1.0f / spp);
 
     // write to framebuffer
-    int base = offset * 3;
-    d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
-    d_framebuffer[base + 1] = d_framebuffer[base + 1] * (1.0f - weight) + light.g * weight;
-    d_framebuffer[base + 2] = d_framebuffer[base + 2] * (1.0f - weight) + light.b * weight;
+    // int base = offset * 3;
+    // d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
+    // d_framebuffer[base + 1] = d_framebuffer[base + 1] * (1.0f - weight) + light.g * weight;
+    // d_framebuffer[base + 2] = d_framebuffer[base + 2] * (1.0f - weight) + light.b * weight;
+
+    // ptr[offset] = make_uchar4(
+    //     fminf(255.0f, d_framebuffer[base + 0] * 255.0f), 
+    //     fminf(255.0f, d_framebuffer[base + 1] * 255.0f),
+    //     fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
+    //     255
+    // );
 
     ptr[offset] = make_uchar4(
-        fminf(255.0f, d_framebuffer[base + 0] * 255.0f), 
-        fminf(255.0f, d_framebuffer[base + 1] * 255.0f),
-        fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
+        fminf(255.0f, light.r * 255.0f), 
+        fminf(255.0f, light.g * 255.0f),
+        fminf(255.0f, light.b * 255.0f),
         255
     );
 }
@@ -145,174 +154,203 @@ void resetFrameCount() {
 }
 
 int main() {
-    // if (!glfwInit())
-    // {
-    //     std::cerr << "Failed to initialize GLFW\n";
-    //     return -1;
-    // }
-    // GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
-    // if (!window)
-    // {
-    //     std::cerr << "Failed to create GLFW window\n";
-    //     glfwTerminate();
-    //     return -1;
-    // }
+    if (!glfwInit())
+    {
+        std::cerr << "Failed to initialize GLFW\n";
+        return -1;
+    }
+    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
+    if (!window)
+    {
+        std::cerr << "Failed to create GLFW window\n";
+        glfwTerminate();
+        return -1;
+    }
 
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // Use core OpenGL 3+
-    // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    // glfwMakeContextCurrent(window);
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    // glfwSetCursorPosCallback(window, mouse_callback);
-    // glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // Use core OpenGL 3+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     
-    // if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    // {
-    //     std::cerr << "Failed to initialize GLAD\n";
-    //     return -1;
-    // }
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cerr << "Failed to initialize GLAD\n";
+        return -1;
+    }
 
 
     
 
-    // Shader shader(vertexShaderPath, fragmentShaderPath);
+    Shader shader(vertexShaderPath, fragmentShaderPath);
 
     Triangle *d_triangles;
-    Scene *d_scene;
+    bvhNode *d_bvh;
+
     std::vector<Triangle> h_triangles;
     std::vector<Material> h_materials;
+    std::vector<bvhNode> h_bvh;
+
     std::cout << "loading model from " << modelObjPath << std::endl;
 
     loadTrianglesAndMaterialsFromOBJ(modelObjPath, mtlBasePath, h_triangles, h_materials);
-    createTree(h_triangles);
-    // uploadSceneToGPU(h_triangles, &d_triangles, &d_scene);
+    std::cout << "before triangle sort" << std::endl;
+    for (int i = 0; i < h_triangles.size(); i++) {
+        std::cout << "[" << i << "] triangle: " << h_triangles[i] << std::endl;
+    }
+    h_bvh = createBVHandSortTriangles(h_triangles);
+    std::cout << "after triangle sort" << std::endl;
+    for (int i = 0; i < h_triangles.size(); i++) {
+        std::cout << "[" << i << "] triangle: " << h_triangles[i] << std::endl;
+    }
+    int count = 0;
+    for (auto &node : h_bvh) {
+        if (node.isLeaf()) {
+            Triangle t = h_triangles[node.triangleIndex];
+            std::cout << "[" << node.triangleIndex << "] triangle: " << t << std::endl;
+            count++;
+        }
+    }
+    std::cout << "total triangles in bvh: " << count << std::endl;
+    std::cout << "total triangles in model: " << h_triangles.size() << std::endl;
+
+    uploadTrianglesToGPU(h_triangles, &d_triangles);
+    uploadBVHToGPU(h_bvh, &d_bvh);
+    std::cout << "BVH and triangles successfully uploaded to GPU" << std::endl;
+
     std::cout << "Scene successfully upload to GPU"<< std::endl;
 
-    // // materials
-    // // load materials array from obj
-    // Material *d_materials;
-    // size_t materialCount = h_materials.size();
-    // if (materialCount == 0) {
-    //     std::cerr << "No materials found in the model. Exiting." << std::endl;
-    //     //TODO: if no materials then define default ones?
-    //     return -1;
-    // }
-    // CUDA_CHECK(cudaMalloc(&d_materials, materialCount * sizeof(Material)));
-    // CUDA_CHECK(cudaMemcpy(d_materials, h_materials.data(), materialCount * sizeof(Material), cudaMemcpyHostToDevice));
-    // std::cout << "Materials successfully uploaded to GPU" << std::endl;
+    // materials
+    // load materials array from obj
+    Material *d_materials;
+    size_t materialCount = h_materials.size();
+    if (materialCount == 0) {
+        std::cerr << "No materials found in the model. Exiting." << std::endl;
+        //TODO: if no materials then define default ones?
+        return -1;
+    }
+    CUDA_CHECK(cudaMalloc(&d_materials, materialCount * sizeof(Material)));
+    CUDA_CHECK(cudaMemcpy(d_materials, h_materials.data(), materialCount * sizeof(Material), cudaMemcpyHostToDevice));
+    std::cout << "Materials successfully uploaded to GPU" << std::endl;
 
-    // //curand stuff
-    // curandState_t *d_states; //declare the states array
-    // CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandState_t))); // allocate space in the GPU for the states array
-    // initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
-    // cudaDeviceSynchronize();
-    // std::cout << "rng states successfully initialized" << std::endl;
+    //curand stuff
+    curandState_t *d_states; //declare the states array
+    CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandState_t))); // allocate space in the GPU for the states array
+    initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
+    cudaDeviceSynchronize();
+    std::cout << "rng states successfully initialized" << std::endl;
 
-    // // allocate memory for frame buffer
-    // float *d_framebuffer;
-    // CUDA_CHECK(cudaMalloc(&d_framebuffer, totalPixels * 3 * sizeof(float)));
-    // CUDA_CHECK(cudaMemset(d_framebuffer, 0, totalPixels * 3 * sizeof(float)));
-    // std::cout << "Framebuffer successfully allocated" << std::endl;
+    // allocate memory for frame buffer
+    float *d_framebuffer;
+    CUDA_CHECK(cudaMalloc(&d_framebuffer, totalPixels * 3 * sizeof(float)));
+    CUDA_CHECK(cudaMemset(d_framebuffer, 0, totalPixels * 3 * sizeof(float)));
+    std::cout << "Framebuffer successfully allocated" << std::endl;
 
 
-    // // // sky
-    // // vec3 h_skycolor(0.63, 0.85, 0.92); // for example
-    // // CUDA_CHECK(cudaMemcpyToSymbol(d_skycolor, &h_skycolor, sizeof(vec3)));
-    // // std::cout << "Sky color successfully uploaded" << std::endl;
+    // // sky
+    // vec3 h_skycolor(0.63, 0.85, 0.92); // for example
+    // CUDA_CHECK(cudaMemcpyToSymbol(d_skycolor, &h_skycolor, sizeof(vec3)));
+    // std::cout << "Sky color successfully uploaded" << std::endl;
     
 
-    // GLuint vao;
-    // GLuint pbo;
-    // GLuint texture;
-    // cudaGraphicsResource* cuda_resource;
+    GLuint vao;
+    GLuint pbo;
+    GLuint texture;
+    cudaGraphicsResource* cuda_resource;
 
-    // // init VAO
-    // glGenVertexArrays(1, &vao);
-    // glBindVertexArray(vao);
+    // init VAO
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
-    // // Pixel buffer object for shared resource with CUDA
-    // glGenBuffers(1, &pbo);
-    // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    // glBufferData(GL_PIXEL_UNPACK_BUFFER, screenWidth * screenHeight * 4, nullptr, GL_DYNAMIC_DRAW);
-    // glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    // Pixel buffer object for shared resource with CUDA
+    glGenBuffers(1, &pbo);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, screenWidth * screenHeight * 4, nullptr, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
-    // cudaGraphicsGLRegisterBuffer(&cuda_resource, pbo, cudaGraphicsMapFlagsWriteDiscard); // using this flag because we only need to write, not read the previous stuff
+    cudaGraphicsGLRegisterBuffer(&cuda_resource, pbo, cudaGraphicsMapFlagsWriteDiscard); // using this flag because we only need to write, not read the previous stuff
 
-    // // Texture for fullscreen quad
-    // glGenTextures(1, &texture);
-    // glBindTexture(GL_TEXTURE_2D, texture);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
+    // Texture for fullscreen quad
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
 
-    // shader.use();
-    // shader.setInt("tex", 0);
-    // // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
+    shader.use();
+    shader.setInt("tex", 0);
+    // glUniform1i(glGetUniformLocation(shader, "tex"), 0);
 
 
-    // //For logging the results
-    // RenderStats stats(h_triangles.size(), screenWidth, screenHeight, bounces, spp);
-    // while (!glfwWindowShouldClose(window)) {
-    //     float currentFrame = (float)glfwGetTime();
-    //     deltaTime = currentFrame - lastFrame;
-    //     lastFrame = currentFrame;
+    //For logging the results
+    RenderStats stats(h_triangles.size(), screenWidth, screenHeight, bounces, spp);
+    while (!glfwWindowShouldClose(window)) {
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
         
-    //     uchar4* device_pointer;
-    //     size_t size;
-    //     cudaGraphicsMapResources(1, &cuda_resource, NULL);        
-    //     cudaGraphicsResourceGetMappedPointer((void**)&device_pointer, &size, cuda_resource);
+        uchar4* device_pointer;
+        size_t size;
+        cudaGraphicsMapResources(1, &cuda_resource, NULL);        
+        cudaGraphicsResourceGetMappedPointer((void**)&device_pointer, &size, cuda_resource);
         
-    //     //#######################################################
-    //     //################## stats start ########################
-    //     //#######################################################
-    //     stats.frameStart();
-    //     frameCount++;
-    //     float frameWeight = 1.0f / (float)frameCount;
-    //     dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
-    //     dim3 threadsPerBlock(16, 16);
-    //     render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
-    //         screenWidth, screenHeight, 
-    //         widthMultiplier, heightMultiplier,
-    //         camera, d_scene, d_materials, d_states,
-    //         bounces, spp,
-    //         d_framebuffer, frameWeight
-    //     );
-    //     cudaDeviceSynchronize();
-    //     cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
-    //     stats.frameEnd();
-    //     //#####################################################
-    //     //################## stats end ########################
-    //     //#####################################################
+        //#######################################################
+        //################## stats start ########################
+        //#######################################################
+        stats.frameStart();
+        frameCount++;
+        float frameWeight = 1.0f / (float)frameCount;
+        dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
+        dim3 threadsPerBlock(16, 16);
+        render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
+            screenWidth, screenHeight, 
+            widthMultiplier, heightMultiplier,
+            camera, d_triangles, d_bvh, d_materials, d_states,
+            bounces, spp,
+            d_framebuffer, frameWeight
+        );
+        cudaDeviceSynchronize();
+        cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
+        stats.frameEnd();
+        //#####################################################
+        //################## stats end ########################
+        //#####################################################
 
-    //     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-    //     glActiveTexture(GL_TEXTURE0);
-    //     glBindTexture(GL_TEXTURE_2D, texture);
-    //     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-    //     glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);
         
-    //     glBindVertexArray(vao);
-    //     glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
         
-    //     processInput(window);
-    //     glfwSwapBuffers(window);     // Swap double buffer
-    //     glfwPollEvents();            // Handle input events
-    // }
-    // stats.saveLog("./logs");
-    // takeScreenshot(window, "./logs");
-    // shader.del();
-    // glDeleteBuffers(1, &pbo);
-    // glDeleteTextures(1, &texture);
-    // cudaGraphicsUnregisterResource(cuda_resource);
-    // CUDA_CHECK(cudaFree(d_states));
-    // CUDA_CHECK(cudaFree(d_materials));
-    // CUDA_CHECK(cudaFree(d_framebuffer));
-    // freeSceneFromGPU(d_triangles, d_scene);
-    // glfwDestroyWindow(window); //! order of operation correct?
-    // glfwTerminate();
+        processInput(window);
+        glfwSwapBuffers(window);     // Swap double buffer
+        glfwPollEvents();            // Handle input events
+    }
+    stats.saveLog("./logs");
+    takeScreenshot(window, "./logs");
+
+    shader.del();
+    glDeleteBuffers(1, &pbo);
+    glDeleteTextures(1, &texture);
+    cudaGraphicsUnregisterResource(cuda_resource);
+    CUDA_CHECK(cudaFree(d_states));
+    CUDA_CHECK(cudaFree(d_materials));
+    CUDA_CHECK(cudaFree(d_framebuffer));
+    freeTrianglesFromGPU(d_triangles);
+    freeBVHFromGPU(d_bvh);
+
+    glfwDestroyWindow(window); //! order of operation correct?
+    glfwTerminate();
         
     return 0;
 }
+
 
 void processInput(GLFWwindow *window)
 {
@@ -336,7 +374,7 @@ void processInput(GLFWwindow *window)
         camera.handleKeyboardInput(RIGHT, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !screenshotTaken) {
-        takeScreenshot(window, "./assets/screenshots/screenshot.png");
+        takeScreenshot(window, "./assets/screenshots");
         screenshotTaken = true;
     }
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE) {

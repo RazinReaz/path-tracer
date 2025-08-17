@@ -163,7 +163,7 @@ public:
         std::cout << "Created " << triangles.size() << " triangles for cube" << std::endl;
         
         auto start = std::chrono::high_resolution_clock::now();
-        bvh = createTree(triangles);
+        bvh = createBVHandSortTriangles(triangles);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         
@@ -198,7 +198,7 @@ public:
         std::cout << "Created " << triangles.size() << " random triangles" << std::endl;
         
         auto start = std::chrono::high_resolution_clock::now();
-        bvh = createTree(triangles);
+        bvh = createBVHandSortTriangles(triangles);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         
@@ -228,7 +228,7 @@ public:
         // Test empty triangle list
         std::cout << "Testing empty triangle list..." << std::endl;
         triangles.clear();
-        bvh = createTree(triangles);
+        bvh = createBVHandSortTriangles(triangles);
         if (bvh.empty()) {
             std::cout << "PASS: Empty triangle list handled correctly" << std::endl;
         } else {
@@ -241,7 +241,7 @@ public:
         triangles.clear();
         vec3 v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0), n(0, 0, 1);
         triangles.emplace_back(v1, v2, v3, n, n, n, 0);
-        bvh = createTree(triangles);
+        bvh = createBVHandSortTriangles(triangles);
         if (bvh.size() == 1 && isLeaf(bvh[0])) {
             std::cout << "PASS: Single triangle handled correctly" << std::endl;
         } else {

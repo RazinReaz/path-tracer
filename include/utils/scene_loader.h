@@ -10,6 +10,7 @@
 #include "ray-tracer/triangle.h"
 #include "math/vec3.h"
 #include "utils/cuda_macro.h"
+#include "ray-tracer/bvh.h"
 
 #include <unordered_map>
 
@@ -234,3 +235,42 @@ void freeSceneFromGPU(Triangle *d_triangles, Scene *d_scene) {
     cudaFree(d_triangles);
     cudaFree(d_scene);
 }
+
+
+void uploadBVHToGPU(std::vector<bvhNode> &host_BVH, bvhNode **device_BVH)
+{
+    size_t num_elements = host_BVH.size();
+    if (num_elements == 0)
+    {
+        std::cerr << "Warning: empty BVH list, skipping GPU upload" << std::endl;
+        *device_BVH = nullptr;
+        return;
+    }
+    CUDA_CHECK(cudaMalloc((void **)device_BVH, sizeof(bvhNode) * num_elements));
+    CUDA_CHECK(cudaMemcpy(*device_BVH, host_BVH.data(), sizeof(bvhNode) * num_elements, cudaMemcpyHostToDevice));
+}
+
+void freeBVHFromGPU(bvhNode *d_BVH)
+{
+    CUDA_CHECK(cudaFree(d_BVH));
+}
+
+void uploadTrianglesToGPU(std::vector<Triangle> &host_triangles, Triangle **device_triangles)
+{
+    size_t num_elements = host_triangles.size();
+    if (num_elements == 0)
+    {
+        std::cerr << "Warning: empty triangle list, skipping GPU upload" << std::endl;
+        *device_triangles = nullptr;
+        return;
+    }
+    CUDA_CHECK(cudaMalloc((void **)device_triangles, sizeof(Triangle) * num_elements));
+    CUDA_CHECK(cudaMemcpy(*device_triangles, host_triangles.data(), sizeof(Triangle) * num_elements, cudaMemcpyHostToDevice));
+}
+
+void freeTrianglesFromGPU(Triangle *d_triangles)
+{
+    CUDA_CHECK(cudaFree(d_triangles));
+}
+
+

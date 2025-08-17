@@ -5,7 +5,7 @@
 #include "ray.h"
 #include "triangle.h"
 
-
+#define EPSILON 1e-4f
 
 class BoundingBox
 {
@@ -13,13 +13,12 @@ public:
     __host__ __device__ BoundingBox();
     __host__ __device__ BoundingBox(const vec3 &min, const vec3 &max);
     __host__ __device__ BoundingBox& operator=(const BoundingBox &other);
-    __host__ __device__ bool intersected_by(const Ray &ray, float& tNear);
+    __host__ __device__ bool intersect(const Ray &ray, float& tNear);
     __host__ __device__ void grow(const Triangle &tri);
     __host__ __device__ void grow(const BoundingBox &other);
 
     float corners[2][3];
 private:
-    const float EPSILON = 1e-4f;
     __host__ __device__ void fixCorners();
 };
 
@@ -77,7 +76,7 @@ BoundingBox::BoundingBox(const vec3 &min, const vec3 &max)
     fixCorners();
 }
 
-__host__ __device__ bool BoundingBox::intersected_by(const Ray &ray, float &tNear)
+__host__ __device__ bool BoundingBox::intersect(const Ray &ray, float &tNear)
 {
     float tmin = 0.0f, tmax = FLT_MAX;
     for (int d = 0; d < 3; d++)

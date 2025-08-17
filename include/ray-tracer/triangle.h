@@ -16,6 +16,11 @@ public:
     
     __host__ __device__
     void calculate_hit_by(Ray& ray);
+    __host__
+    friend std::ostream& operator<<(std::ostream& os, const Triangle& t) {
+        os << "Triangle(va: " << t.va << ", vb: " << t.vb << ", vc: " << t.vc << ", material_index: " << t.material_index << ")";
+        return os;
+    }
 };
 
 __host__ __device__
@@ -70,8 +75,8 @@ Triangle::calculate_hit_by(Ray &ray)
     distance *= inv_det;
 
     vec3 normal = interpolate_norm(u, v);
-    float dot = ray.direction.dot(normal);
-    if (dot > 0) normal = -1 * normal;
+    // float dot = ray.direction.dot(normal);
+    // if (dot > 0) normal = -1 * normal;
     ray.set_hit(distance, normal, material_index);
     return;
 }

@@ -14,6 +14,7 @@
 #include "ray-tracer/boundingBox.h"
 #include "ray-tracer/triangle.h"
 
+
 /*
 This file will first sort the triangles using their Morton code.
 We need the bounds of the scene to generate the Morton code, and also come up with an arbitrary number of bits
@@ -30,9 +31,13 @@ typedef struct bvhNode {
 
     int32_t triangleIndex;
     int32_t triangleCount;
+
+    __host__ __device__ bool isLeaf() const {
+        return leftChildIndex == -1 && rightChildIndex == -1;
+    }
 } bvhNode;
 
-const int BITS = 3;
+const int BITS = 7;
 const int MAX_DEPTH = 10;
 
 void printBVHNode(const bvhNode& node) {
@@ -41,20 +46,7 @@ void printBVHNode(const bvhNode& node) {
     std::cout << "triangleIndex: " << node.triangleIndex << " triangleCount: " << node.triangleCount << std::endl;
 }
 
-// Find the bounding box of all triangles
-void calculateAndAssignBounds(std::vector<Triangle> &triangles, vec3 &maxvec, vec3 &minvec)
-{
-    for (const auto &triangle : triangles)
-    {
-        maxvec.x = std::max({maxvec.x, triangle.va.x, triangle.vb.x, triangle.vc.x});
-        maxvec.y = std::max({maxvec.y, triangle.va.y, triangle.vb.y, triangle.vc.y});
-        maxvec.z = std::max({maxvec.z, triangle.va.z, triangle.vb.z, triangle.vc.z});
 
-        minvec.x = std::min({minvec.x, triangle.va.x, triangle.vb.x, triangle.vc.x});
-        minvec.y = std::min({minvec.y, triangle.va.y, triangle.vb.y, triangle.vc.y});
-        minvec.z = std::min({minvec.z, triangle.va.z, triangle.vb.z, triangle.vc.z});
-    }
-}
 
 inline int mortonIndex(float x, float minx, float maxx, int bits)
 {
@@ -63,7 +55,7 @@ inline int mortonIndex(float x, float minx, float maxx, int bits)
     return std::min(maxIndex, std::max(0, static_cast<int>(norm * maxIndex)));
 }
 
-inline int mortonCode(Triangle t, float maxvec[3], float minvec[3])
+inline int mortonCode(Triangle t, const float maxvec[3], const float minvec[3])
 {
     vec3 centre = (t.va + t.vb + t.vc).scale(1.0f / 3.0f);
     int mortonX = mortonIndex(centre.x, minvec[0], maxvec[0], BITS);
@@ -74,9 +66,9 @@ inline int mortonCode(Triangle t, float maxvec[3], float minvec[3])
     //! interleave
     for (int i = 0; i < BITS; i++)
     {
-        code |= ((mortonX << i) & 1) << (3 * i);
-        code |= ((mortonY << i) & 1) << (3 * i + 1);
-        code |= ((mortonZ << i) & 1) << (3 * i + 2);
+        code |= ((mortonX >> i) & 1) << (3 * i);
+        code |= ((mortonY >> i) & 1) << (3 * i + 1);
+        code |= ((mortonZ >> i) & 1) << (3 * i + 2);
     }
     return code;
 }
@@ -151,7 +143,7 @@ int32_t createTreeRecursive(
 
     if (firstcode == lastcode || begin == end || depth > MAX_DEPTH) { //! means if all codes are same and this can be a leaf node
         //leaf node logic
-        int32_t leafIndex = BVH.size();
+        int32_t leafIndex = static_cast<int32_t>(BVH.size());
         bvhNode leaf;
         for (int i = begin; i <= end; i++) {
             leaf.bbox.grow(codedTriangles[i].second);
@@ -164,7 +156,7 @@ int32_t createTreeRecursive(
     }
 
     int m = getSplitPosition(codedTriangles, begin, end);
-    int32_t parentIndex = BVH.size();
+    int32_t parentIndex = static_cast<int32_t>(BVH.size());
     BVH.push_back(parent);
     
     // Recursively build children
@@ -189,7 +181,7 @@ int32_t createTreeRecursive(
     return parentIndex;
 }
 
-std::vector<bvhNode> createTree(std::vector<Triangle> &triangles)
+std::vector<bvhNode> createBVHandSortTriangles(std::vector<Triangle> &triangles)
 {
     std::vector<bvhNode> BVH;
     
@@ -208,6 +200,73 @@ std::vector<bvhNode> createTree(std::vector<Triangle> &triangles)
     for (int i = 0; i < codedTriangles.size(); i++) {
         triangles[i] = codedTriangles[i].second;
     }    
-    int32_t rootIndex = createTreeRecursive(codedTriangles, BVH, root, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
+    createTreeRecursive(codedTriangles, BVH, root, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
     return BVH;
 }
+
+
+// return the lead node of the bvh that is intersected by the ray
+__host__ __device__
+int32_t traverseTree(bvhNode *BVH, Ray &ray){
+    if (!BVH) return -1;
+    
+    int32_t nodeIndex = 0;
+    float tleft = 100000.0f;
+    if (!BVH[nodeIndex].bbox.intersect(ray, tleft)) {
+        // no intersections with the root node
+        return -1;
+    }
+    float tright = 100000.0f;
+    while(!BVH[nodeIndex].isLeaf()){
+        int32_t leftIndex = BVH[nodeIndex].leftChildIndex;
+        int32_t rightIndex = BVH[nodeIndex].rightChildIndex;
+
+        bool hitsleft = BVH[leftIndex].bbox.intersect(ray, tleft);
+        bool hitsright = BVH[rightIndex].bbox.intersect(ray, tright);
+        if (!hitsleft && !hitsright) break;
+
+        bool one = hitsleft ^ hitsright;
+        bool both = hitsleft && hitsright;
+        
+        if (both) {
+            nodeIndex = (tleft < tright) ? leftIndex : rightIndex;
+        } else if (one) {
+            nodeIndex = (hitsleft) ? leftIndex : rightIndex;
+        }
+        
+    }
+    return nodeIndex;
+}
+
+__host__ __device__
+int32_t countIntersections(bvhNode *BVH, Ray &ray){
+    float tleft = 100000.0f;
+    int32_t nodeIndex = 0;
+    if (!BVH[nodeIndex].bbox.intersect(ray, tleft)) {
+        // no intersections with the root node
+        return 0;
+    }
+    float tright = 100000.0f;
+    int32_t count = 0;
+    while(!BVH[nodeIndex].isLeaf()){
+        count++;
+        int32_t leftIndex = BVH[nodeIndex].leftChildIndex;
+        int32_t rightIndex = BVH[nodeIndex].rightChildIndex;
+
+        bool hitsleft = BVH[leftIndex].bbox.intersect(ray, tleft);
+        bool hitsright = BVH[rightIndex].bbox.intersect(ray, tright);
+        if (!hitsleft && !hitsright) break;
+        
+        if (tleft < tright) {
+            nodeIndex = leftIndex;
+        } else {
+            nodeIndex = rightIndex;
+        }
+    }
+    return count;
+}
+
+
+
+
+
