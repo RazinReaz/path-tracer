@@ -40,11 +40,19 @@ typedef struct bvhNode {
 const int BITS = 7;
 const int MAX_DEPTH = 10;
 
-void printBVHNode(const bvhNode& node) {
-    std::cout << "BoundingBox: (" << node.bbox.corners[0][0] << ", " << node.bbox.corners[0][1] << ", " << node.bbox.corners[0][2] << ") to (" << node.bbox.corners[1][0] << ", " << node.bbox.corners[1][1] << ", " << node.bbox.corners[1][2] << ")" << std::endl;
-    std::cout << "leftChildIndex: " << node.leftChildIndex << " rightChildIndex: " << node.rightChildIndex << std::endl;
-    std::cout << "triangleIndex: " << node.triangleIndex << " triangleCount: " << node.triangleCount << std::endl;
+inline std::ostream& operator<<(std::ostream& os, const bvhNode& node) {
+    os << "bvhNode(";
+    os << "bbox: ";
+    os << "min(" << node.bbox.corners[0][0] << ", " << node.bbox.corners[0][1] << ", " << node.bbox.corners[0][2] << "), ";
+    os << "max(" << node.bbox.corners[1][0] << ", " << node.bbox.corners[1][1] << ", " << node.bbox.corners[1][2] << "), ";
+    os << "left: " << node.leftChildIndex << ", ";
+    os << "right: " << node.rightChildIndex << ", ";
+    os << "triIdx: " << node.triangleIndex << ", ";
+    os << "triCount: " << node.triangleCount;
+    os << ")";
+    return os;
 }
+
 
 
 
@@ -133,7 +141,6 @@ int getSplitPosition(const std::vector<std::pair<int, Triangle>>& list, const in
 int32_t createTreeRecursive(
     const std::vector<std::pair<int, Triangle>> &codedTriangles, 
     std::vector<bvhNode> &BVH, 
-    bvhNode &parent,
     const int& begin, const int& end, 
     const int& depth)
 {
@@ -157,27 +164,23 @@ int32_t createTreeRecursive(
 
     int m = getSplitPosition(codedTriangles, begin, end);
     int32_t parentIndex = static_cast<int32_t>(BVH.size());
-    BVH.push_back(parent);
+    BVH.push_back(bvhNode());
     
     // Recursively build children
-    int32_t leftChildIndex = createTreeRecursive(codedTriangles, BVH, parent, begin, m, depth + 1);
-    int32_t rightChildIndex = createTreeRecursive(codedTriangles, BVH, parent, m + 1, end, depth + 1);
+    int32_t L = createTreeRecursive(codedTriangles, BVH, begin, m, depth + 1);
+    int32_t R = createTreeRecursive(codedTriangles, BVH, m + 1, end, depth + 1);
     
     // Update parent node
-    BVH[parentIndex].leftChildIndex = leftChildIndex;
-    BVH[parentIndex].rightChildIndex = rightChildIndex;
-    BVH[parentIndex].triangleCount = 0;  // Internal nodes don't contain triangles directly
-    BVH[parentIndex].triangleIndex = -1;
+    bvhNode &parent = BVH[parentIndex];
+    parent.leftChildIndex = L;
+    parent.rightChildIndex = R;
+    parent.triangleCount = 0;  // Internal nodes don't contain triangles directly
+    parent.triangleIndex = -1;
     
     // Calculate bounding box for this node
     parent.bbox = BoundingBox();
-    if (leftChildIndex >= 0) {
-        parent.bbox.grow(BVH[leftChildIndex].bbox);
-    }
-    if (rightChildIndex >= 0) {
-        parent.bbox.grow(BVH[rightChildIndex].bbox);
-    }
-    
+    if (L >= 0)  parent.bbox.grow(BVH[L].bbox);
+    if (R >= 0)  parent.bbox.grow(BVH[R].bbox);
     return parentIndex;
 }
 
@@ -200,71 +203,107 @@ std::vector<bvhNode> createBVHandSortTriangles(std::vector<Triangle> &triangles)
     for (int i = 0; i < codedTriangles.size(); i++) {
         triangles[i] = codedTriangles[i].second;
     }    
-    createTreeRecursive(codedTriangles, BVH, root, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
+    createTreeRecursive(codedTriangles, BVH, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
     return BVH;
 }
 
 
-// return the lead node of the bvh that is intersected by the ray
 __host__ __device__
-int32_t traverseTree(bvhNode *BVH, Ray &ray){
-    if (!BVH) return -1;
-    
-    int32_t nodeIndex = 0;
-    float tleft = 100000.0f;
-    if (!BVH[nodeIndex].bbox.intersect(ray, tleft)) {
-        // no intersections with the root node
-        return -1;
-    }
-    float tright = 100000.0f;
-    while(!BVH[nodeIndex].isLeaf()){
-        int32_t leftIndex = BVH[nodeIndex].leftChildIndex;
-        int32_t rightIndex = BVH[nodeIndex].rightChildIndex;
-
-        bool hitsleft = BVH[leftIndex].bbox.intersect(ray, tleft);
-        bool hitsright = BVH[rightIndex].bbox.intersect(ray, tright);
-        if (!hitsleft && !hitsright) break;
-
-        bool one = hitsleft ^ hitsright;
-        bool both = hitsleft && hitsright;
-        
-        if (both) {
-            nodeIndex = (tleft < tright) ? leftIndex : rightIndex;
-        } else if (one) {
-            nodeIndex = (hitsleft) ? leftIndex : rightIndex;
-        }
-        
-    }
-    return nodeIndex;
-}
-
-__host__ __device__
-int32_t countIntersections(bvhNode *BVH, Ray &ray){
-    float tleft = 100000.0f;
-    int32_t nodeIndex = 0;
-    if (!BVH[nodeIndex].bbox.intersect(ray, tleft)) {
-        // no intersections with the root node
-        return 0;
-    }
-    float tright = 100000.0f;
-    int32_t count = 0;
-    while(!BVH[nodeIndex].isLeaf()){
-        count++;
-        int32_t leftIndex = BVH[nodeIndex].leftChildIndex;
-        int32_t rightIndex = BVH[nodeIndex].rightChildIndex;
-
-        bool hitsleft = BVH[leftIndex].bbox.intersect(ray, tleft);
-        bool hitsright = BVH[rightIndex].bbox.intersect(ray, tright);
-        if (!hitsleft && !hitsright) break;
-        
-        if (tleft < tright) {
-            nodeIndex = leftIndex;
+void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
+    int32_t nodeIndexStack[MAX_DEPTH];
+    int32_t stackPointer = 0;
+    nodeIndexStack[stackPointer++] = 0; // pushing the root into the stack
+    while (stackPointer > 0) {
+        int32_t nodeIndex = nodeIndexStack[--stackPointer];
+        if (d_BVH[nodeIndex].isLeaf()) {            
+            for (int b = d_BVH[nodeIndex].triangleIndex, i = 0; i < d_BVH[nodeIndex].triangleCount; i++) {
+                d_triangles[b + i].calculate_hit_by(ray);
+            }
         } else {
-            nodeIndex = rightIndex;
+            int32_t L = d_BVH[nodeIndex].leftChildIndex;
+            int32_t R = d_BVH[nodeIndex].rightChildIndex;
+            float tleft = d_BVH[L].bbox.intersection_distance(ray);
+            float tright = d_BVH[R].bbox.intersection_distance(ray);
+            if (tleft > tright) {
+                if(tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+                if(tright < ray.info.t) nodeIndexStack[stackPointer++] = R;
+            } else {
+                if(tright < ray.info.t) nodeIndexStack[stackPointer++] = R;
+                if(tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+            }
         }
     }
-    return count;
 }
+
+
+// Given a vector of bvhNodes, create thin triangles along the wireframe of their bounding boxes.
+// Returns a vector of Triangle objects representing the wireframes.
+// Each triangle will have per-vertex normals (all the same, perpendicular to the quad face).
+inline std::vector<Triangle> createBVHWireframeTriangles(const std::vector<bvhNode>& bvhNodes, float thickness = 0.05f) {
+    std::vector<Triangle> triangles;
+
+    for (const auto& node : bvhNodes) {
+        int material_index = node.isLeaf() ? 0: 1;
+        // 8 corners of the bounding box
+        vec3 corners[8] = {
+            vec3(node.bbox.corners[0][0], node.bbox.corners[0][1], node.bbox.corners[0][2]),
+            vec3(node.bbox.corners[1][0], node.bbox.corners[0][1], node.bbox.corners[0][2]),
+            vec3(node.bbox.corners[1][0], node.bbox.corners[1][1], node.bbox.corners[0][2]),
+            vec3(node.bbox.corners[0][0], node.bbox.corners[1][1], node.bbox.corners[0][2]),
+            vec3(node.bbox.corners[0][0], node.bbox.corners[0][1], node.bbox.corners[1][2]),
+            vec3(node.bbox.corners[1][0], node.bbox.corners[0][1], node.bbox.corners[1][2]),
+            vec3(node.bbox.corners[1][0], node.bbox.corners[1][1], node.bbox.corners[1][2]),
+            vec3(node.bbox.corners[0][0], node.bbox.corners[1][1], node.bbox.corners[1][2])
+        };
+
+        // 12 edges of the bounding box, each as a pair of indices into corners[]
+        int edges[12][2] = {
+            {0,1}, {1,2}, {2,3}, {3,0}, // bottom face
+            {4,5}, {5,6}, {6,7}, {7,4}, // top face
+            {0,4}, {1,5}, {2,6}, {3,7}  // vertical edges
+        };
+
+        // For each edge, create a thin rectangle (2 triangles) along the edge
+        for (int e = 0; e < 12; ++e) {
+            vec3 a = corners[edges[e][0]];
+            vec3 b = corners[edges[e][1]];
+            vec3 dir = (b - a);
+            dir.normalize_self();
+
+            // Find a vector perpendicular to dir for thickness
+            vec3 up(0, 1, 0);
+            if (fabs(dir.dot(up)) > 0.99f) up = vec3(1, 0, 0);
+            vec3 perp = dir.cross(up);
+            perp.normalize_self();
+            perp = perp * (thickness * 0.5f);
+
+            // Make a quad (rectangle) along the edge, perpendicular to dir
+            vec3 v0 = a + perp;
+            vec3 v1 = a - perp;
+            vec3 v2 = b + perp;
+            vec3 v3 = b - perp;
+
+            // The normal for the quad face (perpendicular to both dir and perp)
+            vec3 normal = dir.cross(perp);
+            normal.normalize_self();
+
+            // Two triangles for the quad, with per-vertex normals
+            triangles.emplace_back(
+                v0, v1, v2,
+                normal, normal, normal,
+                material_index
+            );
+            triangles.emplace_back(
+                v2, v1, v3,
+                normal, normal, normal,
+                material_index
+            );
+        }
+    }
+    return triangles;
+}
+
+
 
 
 

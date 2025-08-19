@@ -59,13 +59,9 @@ $(OBJDIR)/%.obj : %.c
 	$(CXX) $(CXX_FLAGS) /c $< /Fo$@
 
 
-$(BINDIR)/0.hello.run: src/test-cuda/0.hello.cu
-	$(CUDA) -o $@ $< $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/1.cuda_opengl_interop.run: src/test-cuda/1.cuda_opengl_interop.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/2.movement.run: src/test-cuda/2.movement.cu $(CPP_OBJ)
-	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
-$(BINDIR)/3.scene_load.run: src/test-cuda/3.scene_load.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/4.materials.run: src/test-cuda/4.materials.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)

@@ -47,13 +47,12 @@ void
 Triangle::calculate_hit_by(Ray &ray)
 {
     // moller trumbore algorithm
-
     vec3 e1 = vb - va;
     vec3 e2 = vc - va;
     
     vec3 p = ray.direction.cross(e2);
     float det = p.dot(e1);
-    if (det < 1e-5) 
+    if (det < 1e-5f) 
         return;
     
     vec3 ao = ray.origin - va;
@@ -75,8 +74,8 @@ Triangle::calculate_hit_by(Ray &ray)
     distance *= inv_det;
 
     vec3 normal = interpolate_norm(u, v);
-    // float dot = ray.direction.dot(normal);
-    // if (dot > 0) normal = -1 * normal;
+    float dot = ray.direction.dot(normal);
+    if (dot > 0) normal = -1 * normal;
     ray.set_hit(distance, normal, material_index);
     return;
 }

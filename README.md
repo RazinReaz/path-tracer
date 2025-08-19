@@ -59,8 +59,22 @@ Ok so back again to it after seeing something on instagram saying that I just ne
 Now I need to code the traversal of the bvh, integrate it into my path tracer, and then try to make it CUDA friendly
 
 okay so moment of truth!
-![First attempt at BVH](./assets/screenshots/bvh_1.png)
-Something doesn't seem to be right
+![First attempt at BVH](./assets/readme/bvh_1.png)
+Something doesn't seem to be right.
+so, first of all, I was calculating the morton codes wrongly
+then I tried to visualize the bounding boxes using triangles as lines. Which didn't really help.
+Then I noticed a few bugs in my code, where I was modifying a reference to the node object, which was not being updated in the BVH array. yikes. So I fixed that, and with a little help of Sabastian Lague, I figured out my bug in the traversal code. 
+## Why we need to visit both children and not only the closest bbox?
+It was pretty obvious. Lets say there are just two small trinagles in the closer leaf on the min corner and max corner only. most rays will miss the triangle and we would have to test the further bounding box for triangles intersections now don't we? My mistake was thinking the ray will always hit something in the closer bounding box.
+
+So yeah, if we have to check both the children, a recursion would be nice. but since GPUs are not so fond of recursions, we use a stack instead 
+### stackful approach vs stackless approach
+One might think it is a good idea to go stackfree because stacks need extra memory. but, if we were to do that, we would need to store the index values of the nodes we have yet to visit in some other way. Well at least that is what CHatgpt said. so extra memory is always needed.
+I ran into a problem. Following Sabastian Lague, i implemented the check before pushing a node('s index) onto the stack. If the ray has already found a t value that is lower than a child's t value, then all triangles in the child are farther away and do not need to be tested. so, 
+`if ray.info.t < tleft` we don't push the left child onto the stack and vice versa. But somehow this was not working. 
+![with ray.info.t test before pushing](./assets/readme/bvh-tri.png)
+
+gotta get it fixed tomorrow. but for now, the code without the test works wonderfully.
 
 
 

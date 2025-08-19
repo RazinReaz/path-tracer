@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cfloat> // for FLT_MAX
+#include "utils/cuda_utils.h"
 #include "math/vec3.h"
 #include "ray.h"
 #include "triangle.h"
 
 #define EPSILON 1e-4f
+
 
 class BoundingBox
 {
@@ -13,7 +15,7 @@ public:
     __host__ __device__ BoundingBox();
     __host__ __device__ BoundingBox(const vec3 &min, const vec3 &max);
     __host__ __device__ BoundingBox& operator=(const BoundingBox &other);
-    __host__ __device__ bool intersect(const Ray &ray, float& tNear);
+    __host__ __device__ float intersection_distance(const Ray &ray);
     __host__ __device__ void grow(const Triangle &tri);
     __host__ __device__ void grow(const BoundingBox &other);
 
@@ -76,8 +78,7 @@ BoundingBox::BoundingBox(const vec3 &min, const vec3 &max)
     fixCorners();
 }
 
-__host__ __device__ bool BoundingBox::intersect(const Ray &ray, float &tNear)
-{
+__host__ __device__ float BoundingBox::intersection_distance(const Ray &ray) {
     float tmin = 0.0f, tmax = FLT_MAX;
     for (int d = 0; d < 3; d++)
     {
@@ -89,18 +90,14 @@ __host__ __device__ bool BoundingBox::intersect(const Ray &ray, float &tNear)
             bmin -= EPSILON;
             bmax += EPSILON;
         }
-
+        
         float dmin = (bmin - ray.origin.data[d]) * (ray.inv_direction.data[d]);
         float dmax = (bmax - ray.origin.data[d]) * (ray.inv_direction.data[d]);
 
         tmin = fmaxf(dmin, tmin);
         tmax = fminf(dmax, tmax);
     }
-    if (tmin < tmax)
-    {
-        tNear = tmin;
-    }
-    return tmin < tmax;
+    return (tmin < tmax) ? tmin : FLT_MAX;
 }
 
 __host__ __device__ void BoundingBox::grow(const Triangle& tri) {

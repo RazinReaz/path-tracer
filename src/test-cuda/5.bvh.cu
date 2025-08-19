@@ -28,7 +28,7 @@
 #include "ray-tracer/materials.h"
 #include "ray-tracer/bvh.h"
 #include "utils/scene_loader.h"
-#include "utils/cuda_macro.h"
+#include "utils/cuda_utils.h"
 #include "utils/renderStats.h"
 
 const int screenHeight = 512;
@@ -109,42 +109,33 @@ void render(
         int nBounces = bounces;
         while(nBounces--) {
             ray.reset_hit();
-            int nodeIndex = traverseTree(d_bvh, ray);
-            if (nodeIndex == -1) {
+            traverseTree(d_bvh, d_triangles, ray);
+            if (!ray.info.hit) {
                 light += vec3(0.1f, 0.1f, 0.1f);
                 break;
             }
-            int begin = d_bvh[nodeIndex].triangleIndex, end = begin + d_bvh[nodeIndex].triangleCount;
-            for (int i = begin; i < end; i++) {
-                d_triangles[i].calculate_hit_by(ray);
-            }
-            if (!ray.info.hit) {
-                light += vec3(0.0f, 0.2f, 0.2f);
-                break;
-            }
-            light += vec3(0.8f, 0.8f, 0.8f);
-            
+            light += vec3((ray.info.norm.x + 1) * 0.5f, (ray.info.norm.y + 1) * 0.5f, (ray.info.norm.z + 1) * 0.5f);
+            break;
+            // Material mat = d_materials[ray.info.mat_idx];
+            // attenuation *= mat.albedo;
+            // light += mat.emission * attenuation;  //! this should be changed
+            // state = states[offset];
+            // bounce(ray, mat, &state);
+            // states[offset] = state;
         }
     }
     light.scale(1.0f / spp);
 
     // write to framebuffer
-    // int base = offset * 3;
-    // d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
-    // d_framebuffer[base + 1] = d_framebuffer[base + 1] * (1.0f - weight) + light.g * weight;
-    // d_framebuffer[base + 2] = d_framebuffer[base + 2] * (1.0f - weight) + light.b * weight;
-
-    // ptr[offset] = make_uchar4(
-    //     fminf(255.0f, d_framebuffer[base + 0] * 255.0f), 
-    //     fminf(255.0f, d_framebuffer[base + 1] * 255.0f),
-    //     fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
-    //     255
-    // );
+    int base = offset * 3;
+    d_framebuffer[base + 0] = d_framebuffer[base + 0] * (1.0f - weight) + light.r * weight;
+    d_framebuffer[base + 1] = d_framebuffer[base + 1] * (1.0f - weight) + light.g * weight;
+    d_framebuffer[base + 2] = d_framebuffer[base + 2] * (1.0f - weight) + light.b * weight;
 
     ptr[offset] = make_uchar4(
-        fminf(255.0f, light.r * 255.0f), 
-        fminf(255.0f, light.g * 255.0f),
-        fminf(255.0f, light.b * 255.0f),
+        fminf(255.0f, d_framebuffer[base + 0] * 255.0f), 
+        fminf(255.0f, d_framebuffer[base + 1] * 255.0f),
+        fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
         255
     );
 }
@@ -159,7 +150,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
-    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "BVH", NULL, NULL);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -194,36 +185,16 @@ int main() {
     std::vector<bvhNode> h_bvh;
 
     std::cout << "loading model from " << modelObjPath << std::endl;
-
     loadTrianglesAndMaterialsFromOBJ(modelObjPath, mtlBasePath, h_triangles, h_materials);
-    std::cout << "before triangle sort" << std::endl;
-    for (int i = 0; i < h_triangles.size(); i++) {
-        std::cout << "[" << i << "] triangle: " << h_triangles[i] << std::endl;
-    }
     h_bvh = createBVHandSortTriangles(h_triangles);
-    std::cout << "after triangle sort" << std::endl;
-    for (int i = 0; i < h_triangles.size(); i++) {
-        std::cout << "[" << i << "] triangle: " << h_triangles[i] << std::endl;
+    for (int i = 0; i < h_bvh.size(); i++) {
+        std::cout << h_bvh[i] << std::endl;
     }
-    int count = 0;
-    for (auto &node : h_bvh) {
-        if (node.isLeaf()) {
-            Triangle t = h_triangles[node.triangleIndex];
-            std::cout << "[" << node.triangleIndex << "] triangle: " << t << std::endl;
-            count++;
-        }
-    }
-    std::cout << "total triangles in bvh: " << count << std::endl;
-    std::cout << "total triangles in model: " << h_triangles.size() << std::endl;
-
     uploadTrianglesToGPU(h_triangles, &d_triangles);
     uploadBVHToGPU(h_bvh, &d_bvh);
     std::cout << "BVH and triangles successfully uploaded to GPU" << std::endl;
 
-    std::cout << "Scene successfully upload to GPU"<< std::endl;
-
     // materials
-    // load materials array from obj
     Material *d_materials;
     size_t materialCount = h_materials.size();
     if (materialCount == 0) {
@@ -247,12 +218,6 @@ int main() {
     CUDA_CHECK(cudaMalloc(&d_framebuffer, totalPixels * 3 * sizeof(float)));
     CUDA_CHECK(cudaMemset(d_framebuffer, 0, totalPixels * 3 * sizeof(float)));
     std::cout << "Framebuffer successfully allocated" << std::endl;
-
-
-    // // sky
-    // vec3 h_skycolor(0.63, 0.85, 0.92); // for example
-    // CUDA_CHECK(cudaMemcpyToSymbol(d_skycolor, &h_skycolor, sizeof(vec3)));
-    // std::cout << "Sky color successfully uploaded" << std::endl;
     
 
     GLuint vao;

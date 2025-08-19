@@ -27,7 +27,7 @@
 #include "ray-tracer/scene.h"
 #include "ray-tracer/materials.h"
 #include "utils/scene_loader.h"
-#include "utils/cuda_macro.h"
+#include "utils/cuda_utils.h"
 #include "utils/renderStats.h"
 
 const int screenHeight = 512;
@@ -63,8 +63,8 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/test/";
-const char *modelObjPath = "assets/models/test/test.obj";
+const char *mtlBasePath = "assets/models/CornellBox/";
+const char *modelObjPath = "assets/models/CornellBox/CornellBox-Original.obj";
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 
@@ -114,13 +114,15 @@ void render(
                 light += d_skycolor * attenuation;
                 break;
             }
-            Material mat = d_materials[ray.info.mat_idx];
-            // light += mat.albedo;
-            attenuation *= mat.albedo;
-            light += mat.emission * attenuation;  //! this should be changed
-            state = states[offset];
-            bounce(ray, mat, &state);
-            states[offset] = state;
+            light += vec3((ray.info.norm.x + 1) * 0.5f, (ray.info.norm.y + 1) * 0.5f, (ray.info.norm.z + 1) * 0.5f);
+            break;
+            // Material mat = d_materials[ray.info.mat_idx];
+            // // light += mat.albedo;
+            // attenuation *= mat.albedo;
+            // light += mat.emission * attenuation;  //! this should be changed
+            // state = states[offset];
+            // bounce(ray, mat, &state);
+            // states[offset] = state;
         }
     }
     light.scale(1.0f / spp);
@@ -149,7 +151,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
-    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "Materials", NULL, NULL);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";

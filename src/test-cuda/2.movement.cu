@@ -112,7 +112,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
-    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "CUDA+OpenGL interop minimal", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(screenWidth, screenHeight, "Movement", NULL, NULL);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window\n";

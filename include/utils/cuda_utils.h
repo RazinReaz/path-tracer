@@ -1,5 +1,9 @@
 #pragma once 
 
+#include <cuda_runtime.h>
+
+#include <iostream>
+
 #define CUDA_CHECK(err)                                                                                 \
     if ((err) != cudaSuccess)                                                                           \
     {                                                                                                   \
