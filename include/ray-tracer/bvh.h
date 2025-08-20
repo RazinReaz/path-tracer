@@ -25,20 +25,19 @@ Then we will generate a vector of triangles by removing the Morton codes from th
 
 typedef struct bvhNode {
     BoundingBox bbox;
-
-    int32_t leftChildIndex;
-    int32_t rightChildIndex;
-
-    int32_t triangleIndex;
+    union{
+        int32_t leftChildIndex;
+        int32_t triangleIndex;
+    };
     int32_t triangleCount;
 
     __host__ __device__ bool isLeaf() const {
-        return leftChildIndex == -1 && rightChildIndex == -1;
+        return triangleCount > 0;
     }
 } bvhNode;
 
 const int BITS = 7;
-const int MAX_DEPTH = 10;
+const int MAX_DEPTH = 16;
 
 inline std::ostream& operator<<(std::ostream& os, const bvhNode& node) {
     os << "bvhNode(";
@@ -46,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const bvhNode& node) {
     os << "min(" << node.bbox.corners[0][0] << ", " << node.bbox.corners[0][1] << ", " << node.bbox.corners[0][2] << "), ";
     os << "max(" << node.bbox.corners[1][0] << ", " << node.bbox.corners[1][1] << ", " << node.bbox.corners[1][2] << "), ";
     os << "left: " << node.leftChildIndex << ", ";
-    os << "right: " << node.rightChildIndex << ", ";
+    os << "right: " << node.leftChildIndex + 1 << ", ";
     os << "triIdx: " << node.triangleIndex << ", ";
     os << "triCount: " << node.triangleCount;
     os << ")";
@@ -81,6 +80,7 @@ inline int mortonCode(Triangle t, const float maxvec[3], const float minvec[3])
     return code;
 }
 
+__host__
 std::vector<std::pair<int, Triangle>> sortTriangleListByMortonCode(std::vector<Triangle> &triangles, float maxvec[3], float minvec[3])
 {
     std::vector<std::pair<int, Triangle>> codedTriangles;
@@ -101,6 +101,7 @@ std::vector<std::pair<int, Triangle>> sortTriangleListByMortonCode(std::vector<T
     return codedTriangles;
 }
 
+__host__
 // Count leading zeros (portable)
 inline int countLeadingZeros(unsigned int x)
 {
@@ -115,6 +116,7 @@ inline int countLeadingZeros(unsigned int x)
 #endif
 }
 
+__host__
 int getSplitPosition(const std::vector<std::pair<int, Triangle>>& list, const int &begin, const int& end) {
     int firstcode = list[begin].first;
     int lastcode = list[end].first;
@@ -138,52 +140,49 @@ int getSplitPosition(const std::vector<std::pair<int, Triangle>>& list, const in
     return split;
 }
 
-int32_t createTreeRecursive(
-    const std::vector<std::pair<int, Triangle>> &codedTriangles, 
-    std::vector<bvhNode> &BVH, 
-    const int& begin, const int& end, 
-    const int& depth)
+__host__ 
+void split(
+    std::vector<std::pair<int, Triangle>> &codedTriangles,
+    std::vector<bvhNode> &BVH,
+    int32_t parentIndex,
+    const int& begin,
+    const int& end,
+    const int& depth
+)
 {
     int firstcode = codedTriangles[begin].first;
     int lastcode = codedTriangles[end].first;
-
-
-    if (firstcode == lastcode || begin == end || depth > MAX_DEPTH) { //! means if all codes are same and this can be a leaf node
-        //leaf node logic
-        int32_t leafIndex = static_cast<int32_t>(BVH.size());
-        bvhNode leaf;
+    
+    if (firstcode == lastcode || begin == end || depth > MAX_DEPTH) {
         for (int i = begin; i <= end; i++) {
-            leaf.bbox.grow(codedTriangles[i].second);
+            BVH[parentIndex].bbox.grow(codedTriangles[i].second);
         }
-        leaf.triangleCount = end - begin + 1;
-        leaf.triangleIndex = begin;
-        leaf.leftChildIndex = leaf.rightChildIndex = -1;
-        BVH.push_back(leaf);
-        return leafIndex;
+        BVH[parentIndex].triangleIndex = begin;
+        BVH[parentIndex].triangleCount = end - begin + 1;
+        return;
     }
+    
+    // not leaf
+    int32_t index = static_cast<int32_t>(BVH.size());
+    BVH.push_back(bvhNode());
+    BVH.push_back(bvhNode());
 
     int m = getSplitPosition(codedTriangles, begin, end);
-    int32_t parentIndex = static_cast<int32_t>(BVH.size());
-    BVH.push_back(bvhNode());
-    
-    // Recursively build children
-    int32_t L = createTreeRecursive(codedTriangles, BVH, begin, m, depth + 1);
-    int32_t R = createTreeRecursive(codedTriangles, BVH, m + 1, end, depth + 1);
-    
-    // Update parent node
-    bvhNode &parent = BVH[parentIndex];
-    parent.leftChildIndex = L;
-    parent.rightChildIndex = R;
-    parent.triangleCount = 0;  // Internal nodes don't contain triangles directly
-    parent.triangleIndex = -1;
-    
-    // Calculate bounding box for this node
-    parent.bbox = BoundingBox();
-    if (L >= 0)  parent.bbox.grow(BVH[L].bbox);
-    if (R >= 0)  parent.bbox.grow(BVH[R].bbox);
-    return parentIndex;
+
+    split(codedTriangles, BVH, index,     begin, m,   depth + 1);
+    split(codedTriangles, BVH, index + 1, m + 1, end, depth + 1);
+
+    BVH[parentIndex].bbox = BoundingBox();
+    BVH[parentIndex].bbox.grow(BVH[index].bbox);
+    BVH[parentIndex].bbox.grow(BVH[index + 1].bbox);
+
+    BVH[parentIndex].leftChildIndex = index;
+    BVH[parentIndex].triangleCount = 0;
+
+    return;
 }
 
+__host__
 std::vector<bvhNode> createBVHandSortTriangles(std::vector<Triangle> &triangles)
 {
     std::vector<bvhNode> BVH;
@@ -202,13 +201,15 @@ std::vector<bvhNode> createBVHandSortTriangles(std::vector<Triangle> &triangles)
     /// modify the original triangles array according to the codedTriangles
     for (int i = 0; i < codedTriangles.size(); i++) {
         triangles[i] = codedTriangles[i].second;
-    }    
-    createTreeRecursive(codedTriangles, BVH, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
+    }   
+    // createTreeRecursive(codedTriangles, BVH, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
+    BVH.push_back(bvhNode());
+    split(codedTriangles, BVH, 0, 0, static_cast<int>(codedTriangles.size()) - 1, 0);
     return BVH;
 }
 
 
-__host__ __device__
+__device__
 void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
     int32_t nodeIndexStack[MAX_DEPTH];
     int32_t stackPointer = 0;
@@ -221,20 +222,46 @@ void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
             }
         } else {
             int32_t L = d_BVH[nodeIndex].leftChildIndex;
-            int32_t R = d_BVH[nodeIndex].rightChildIndex;
             float tleft = d_BVH[L].bbox.intersection_distance(ray);
-            float tright = d_BVH[R].bbox.intersection_distance(ray);
+            float tright = d_BVH[L + 1].bbox.intersection_distance(ray);
+
             if (tleft > tright) {
-                if(tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
-                if(tright < ray.info.t) nodeIndexStack[stackPointer++] = R;
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
             } else {
-                if(tright < ray.info.t) nodeIndexStack[stackPointer++] = R;
-                if(tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
             }
         }
     }
 }
 
+__host__ __device__
+int32_t countTriangleTests(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
+    int32_t nodeIndexStack[MAX_DEPTH];
+    int32_t stackPointer = 0;
+    int32_t totalTests = 0;
+    nodeIndexStack[stackPointer++] = 0; // pushing the root into the stack
+    
+    while (stackPointer > 0) {
+        int32_t nodeIndex = nodeIndexStack[--stackPointer];
+        if (d_BVH[nodeIndex].isLeaf()) {            
+            totalTests += d_BVH[nodeIndex].triangleCount;
+        } else {
+            int32_t L = d_BVH[nodeIndex].leftChildIndex;
+            float tleft = d_BVH[L].bbox.intersection_distance(ray);
+            float tright = d_BVH[L + 1].bbox.intersection_distance(ray);
+            if (tleft > tright) {
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
+            } else {
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+            }
+        }
+    }
+    return totalTests;
+}
 
 // Given a vector of bvhNodes, create thin triangles along the wireframe of their bounding boxes.
 // Returns a vector of Triangle objects representing the wireframes.

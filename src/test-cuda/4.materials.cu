@@ -63,8 +63,8 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/CornellBox/";
-const char *modelObjPath = "assets/models/CornellBox/CornellBox-Original.obj";
+const char *mtlBasePath = "assets/models/test/";
+const char *modelObjPath = "assets/models/test/test.obj";
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 
@@ -114,15 +114,13 @@ void render(
                 light += d_skycolor * attenuation;
                 break;
             }
-            light += vec3((ray.info.norm.x + 1) * 0.5f, (ray.info.norm.y + 1) * 0.5f, (ray.info.norm.z + 1) * 0.5f);
-            break;
-            // Material mat = d_materials[ray.info.mat_idx];
-            // // light += mat.albedo;
-            // attenuation *= mat.albedo;
-            // light += mat.emission * attenuation;  //! this should be changed
-            // state = states[offset];
-            // bounce(ray, mat, &state);
-            // states[offset] = state;
+
+            Material mat = d_materials[ray.info.mat_idx];
+            attenuation *= mat.albedo;
+            light += mat.emission * attenuation;  //! this should be changed
+            state = states[offset];
+            bounce(ray, mat, &state);
+            states[offset] = state;
         }
     }
     light.scale(1.0f / spp);

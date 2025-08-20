@@ -74,7 +74,43 @@ I ran into a problem. Following Sabastian Lague, i implemented the check before 
 `if ray.info.t < tleft` we don't push the left child onto the stack and vice versa. But somehow this was not working. 
 ![with ray.info.t test before pushing](./assets/readme/bvh-tri.png)
 
-gotta get it fixed tomorrow. but for now, the code without the test works wonderfully.
+gotta get it fixed tomorrow. but for now, the code without the test works. not wonderfully. it gets me 1 fps.
+Okay so brand new day. I collapsed the bvhNode to fit into 32 bytes (for CUDA memory alignment) and it bumped the FPS from 1.0 to 1.4.
+Such an improvement!
+The tests that were giving me the highest performance, the early pruning of nodes, that is what was giving me trouble.
+```
+__device__
+void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
+    // initialize stack
+    // push the root into the stack
+    while (stack is not empty) {
+        pop the top of the stack
+        if (node is a leaf) {            
+            // calculate hit with the triangles in the node
+        } else {
+            int32_t L = d_BVH[nodeIndex].leftChildIndex;
+            float tleft = d_BVH[L].bbox.intersection_distance(ray);
+            float tright = d_BVH[L + 1].bbox.intersection_distance(ray);
+
+            if (tleft > tright) {
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;~
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
+            } else {
+                if (tright < ray.info.t) nodeIndexStack[stackPointer++] = L + 1;
+                if (tleft < ray.info.t) nodeIndexStack[stackPointer++] = L;
+            }
+        }
+    }
+}
+```
+turns out, the comparison was not working because the `t` values were not in the same unit. \
+Let me explain. in my ray class, when I calculate the inverse direction (that would optimize by AABB intersection test), I put the unnormalized direction to calculate the `inv_direction` field. 
+After fixing that bug, I got 86 FPS in my test scene.
+![BVH FINALLY WORKS](./assets/readme/bvh-works-1.png)
+![BVH FINALLY WORKS STILL](./assets/readme/bvh-works-2.png)
+
+Next up, specular BRDF and Refraction
+
 
 
 

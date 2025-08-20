@@ -19,6 +19,23 @@ typedef struct Material {
     vec3 emission;
 } Material;
 
+#include <iostream>
+
+inline std::ostream& operator<<(std::ostream& os, const Material& mat) {
+    os << "Material(";
+    switch (mat.type) {
+        case LAMBERTIAN: os << "LAMBERTIAN"; break;
+        case METALLIC:   os << "METALLIC"; break;
+        case EMISSIVE:   os << "EMISSIVE"; break;
+        default:         os << "UNKNOWN"; break;
+    }
+    os << ", albedo: (" << mat.albedo.x << ", " << mat.albedo.y << ", " << mat.albedo.z << ")";
+    os << ", emission: (" << mat.emission.x << ", " << mat.emission.y << ", " << mat.emission.z << ")";
+    os << ")";
+    return os;
+}
+
+
 
 __device__
 void scatter_ray(Ray& ray, curandState_t *state)

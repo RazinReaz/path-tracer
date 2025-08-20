@@ -2,6 +2,7 @@
 
 #include "math/vec3.h"
 #include <ostream>
+#include <cfloat> // for FLT_MAX
 
 
 typedef struct Info
@@ -35,23 +36,13 @@ public:
     Info info;
 };
 
-// __host__ __device__
-// Ray::Ray()
-//     : origin(0.0f, 0.0f, 0.0f), direction(0.0f, 0.0f, 0.0f)
-// {
-//     info.hit = false;
-//     info.t = 10000.0;
-//     info.norm = vec3(0.0f, 0.0f, 0.0f);
-//     info.mat_idx = -1;
-// }
-
 __host__ __device__
 Ray::Ray(const vec3 &orig, const vec3 &dir)
     : origin(orig), direction(dir.normalize())
 {
-    inv_direction = vec3(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
+    inv_direction = vec3(1.0f / direction.x, 1.0f / direction.y, 1.0f / direction.z);
     info.hit = false;
-    info.t = 10000.0;
+    info.t = FLT_MAX;
     info.norm = vec3(0.0f, 0.0f, 0.0f);
     info.mat_idx = -1;
 }
@@ -81,7 +72,7 @@ __host__ __device__
 void
 Ray::reset_hit(){
     info.hit = false;
-    info.t = 10000.0;
+    info.t = FLT_MAX;
     info.norm = vec3(0.0f, 0.0f, 0.0f);
     info.mat_idx = -1;
 }

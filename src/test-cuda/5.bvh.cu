@@ -50,6 +50,9 @@ float lastY = screenHeight / 2.0f;
 bool firstMouse = true;
 
 bool screenshotTaken = false;
+bool showTestCount = false; // Toggle for test count visualization
+bool showStats = false; // Toggle for statistics display
+int visualizationMode = 0; // 0: normal, 1: test count, 2: test count with opacity
 
 const int bounces = 5;
 const int spp = 1;
@@ -61,11 +64,85 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void processInput(GLFWwindow *window);
 void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
+// Function to calculate test count statistics
+void calculateTestCountStats(bvhNode *d_bvh, Triangle *d_triangles, Camera camera, int maxTests) {
+    std::vector<int32_t> testCounts;
+    testCounts.reserve(screenWidth * screenHeight);
+    
+    // Sample test counts from a grid of rays
+    for (int y = 0; y < screenHeight; y += 4) { // Sample every 4th pixel for performance
+        for (int x = 0; x < screenWidth; x += 4) {
+            float u = ((float)x + 0.5f) * widthMultiplier;
+            float v = ((float)y + 0.5f) * heightMultiplier;
+            
+            vec3 rayOrigin = camera.position;
+            vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
+            Ray ray(rayOrigin, rayDest - rayOrigin);
+            
+            // Count triangle tests for this ray
+            int32_t testCount = countTriangleTests(d_bvh, d_triangles, ray);
+            testCounts.push_back(testCount);
+        }
+    }
+    
+    if (testCounts.empty()) return;
+    
+    // Calculate statistics
+    std::sort(testCounts.begin(), testCounts.end());
+    int32_t minTests = testCounts.front();
+    maxTests = testCounts.back();
+    int32_t medianTests = testCounts[testCounts.size() / 2];
+    
+    float avgTests = 0.0f;
+    for (int count : testCounts) {
+        avgTests += (float)count;
+    }
+    avgTests /= testCounts.size();
+    
+    // Calculate percentiles
+    int32_t p90 = testCounts[(int)(testCounts.size() * 0.9f)];
+    int32_t p95 = testCounts[(int)(testCounts.size() * 0.95f)];
+    int32_t p99 = testCounts[(int)(testCounts.size() * 0.99f)];
+    
+    // Calculate variance and standard deviation
+    float variance = 0.0f;
+    for (int count : testCounts) {
+        float diff = (float)count - avgTests;
+        variance += diff * diff;
+    }
+    variance /= testCounts.size();
+    float stdDev = sqrtf(variance);
+    
+    // Count rays in different test count ranges
+    int lowTests = 0, mediumTests = 0, highTests = 0;
+    for (int count : testCounts) {
+        if (count <= 10) lowTests++;
+        else if (count <= 100) mediumTests++;
+        else highTests++;
+    }
+    
+    std::cout << "\n=== Triangle Test Count Statistics ===" << std::endl;
+    std::cout << "Min tests: " << minTests << std::endl;
+    std::cout << "Max tests: " << maxTests << std::endl;
+    std::cout << "Average tests: " << std::fixed << std::setprecision(1) << avgTests << std::endl;
+    std::cout << "Median tests: " << medianTests << std::endl;
+    std::cout << "Standard deviation: " << std::fixed << std::setprecision(1) << stdDev << std::endl;
+    std::cout << "90th percentile: " << p90 << std::endl;
+    std::cout << "95th percentile: " << p95 << std::endl;
+    std::cout << "99th percentile: " << p99 << std::endl;
+    std::cout << "\nDistribution:" << std::endl;
+    std::cout << "  Low (≤10 tests): " << lowTests << " rays (" << std::fixed << std::setprecision(1) << (float)lowTests/testCounts.size()*100 << "%)" << std::endl;
+    std::cout << "  Medium (11-100 tests): " << mediumTests << " rays (" << std::fixed << std::setprecision(1) << (float)mediumTests/testCounts.size()*100 << "%)" << std::endl;
+    std::cout << "  High (>100 tests): " << highTests << " rays (" << std::fixed << std::setprecision(1) << (float)highTests/testCounts.size()*100 << "%)" << std::endl;
+    std::cout << "\nTotal samples: " << testCounts.size() << std::endl;
+    std::cout << "=====================================" << std::endl;
+}
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/CornellBox/";
-const char *modelObjPath = "assets/models/CornellBox/CornellBox-Original.obj";
+const char *mtlBasePath = "assets/models/test/";
+const char *modelObjPath = "assets/models/test/test.obj";
+
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 
@@ -111,17 +188,16 @@ void render(
             ray.reset_hit();
             traverseTree(d_bvh, d_triangles, ray);
             if (!ray.info.hit) {
-                light += vec3(0.1f, 0.1f, 0.1f);
+                vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
+                light += d_skycolor * attenuation;
                 break;
             }
-            light += vec3((ray.info.norm.x + 1) * 0.5f, (ray.info.norm.y + 1) * 0.5f, (ray.info.norm.z + 1) * 0.5f);
-            break;
-            // Material mat = d_materials[ray.info.mat_idx];
-            // attenuation *= mat.albedo;
-            // light += mat.emission * attenuation;  //! this should be changed
-            // state = states[offset];
-            // bounce(ray, mat, &state);
-            // states[offset] = state;
+            Material mat = d_materials[ray.info.mat_idx];
+            attenuation *= mat.albedo;
+            light += mat.emission * attenuation;  //! this should be changed
+            state = states[offset];
+            bounce(ray, mat, &state);
+            states[offset] = state;
         }
     }
     light.scale(1.0f / spp);
@@ -140,8 +216,123 @@ void render(
     );
 }
 
+__global__
+void renderTestCount(
+    uchar4 *ptr, 
+    const int w, const int h, 
+    const float wMult, const float hMult, 
+    Camera camera, 
+    Triangle *d_triangles, bvhNode *d_bvh,
+    int maxTests
+) 
+{
+	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
+	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
+    if (pixelx >= w || pixely >= h) return;
+	int offset = pixelx + pixely * w;
+
+    float u = ((float)pixelx + 0.5f) * wMult;
+    float v = ((float)pixely + 0.5f) * hMult;
+    
+    vec3 rayOrigin = camera.position;
+    vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
+    Ray ray(rayOrigin, rayDest - rayOrigin);
+    
+    // Count triangle tests for this ray
+    int32_t testCount = countTriangleTests(d_bvh, d_triangles, ray);
+    
+    // Normalize test count to 0-1 range (using log scale for better distribution)
+    float normalizedCount = testCount > 0 ? logf((float)testCount + 1.0f) / logf((float)maxTests + 1.0f) : 0.0f;
+    
+    // Create a color based on test count using a heat map
+    vec3 color;
+    if (normalizedCount < 0.25f) {
+        // Blue to cyan (very few tests)
+        float t = normalizedCount / 0.25f;
+        color = vec3(0.0f, t, 1.0f);
+    } else if (normalizedCount < 0.5f) {
+        // Cyan to green (few tests)
+        float t = (normalizedCount - 0.25f) / 0.25f;
+        color = vec3(0.0f, 1.0f, 1.0f - t);
+    } else if (normalizedCount < 0.75f) {
+        // Green to yellow (medium tests)
+        float t = (normalizedCount - 0.5f) / 0.25f;
+        color = vec3(t, 1.0f, 0.0f);
+    } else {
+        // Yellow to red (many tests)
+        float t = (normalizedCount - 0.75f) / 0.25f;
+        color = vec3(1.0f, 1.0f - t, 0.0f);
+    }
+    
+    // Add some brightness variation for better visualization
+    float brightness = 0.4f + normalizedCount * 0.6f;
+    color.scale(brightness);
+
+    ptr[offset] = make_uchar4(
+        fminf(255.0f, color.r * 255.0f), 
+        fminf(255.0f, color.g * 255.0f),
+        fminf(255.0f, color.b * 255.0f),
+        255
+    );
+}
+
+__global__
+void renderTestCountOpacity(
+    uchar4 *ptr, 
+    const int w, const int h, 
+    const float wMult, const float hMult, 
+    Camera camera, 
+    Triangle *d_triangles, bvhNode *d_bvh,
+    int maxTests
+) 
+{
+	int pixelx = threadIdx.x + blockIdx.x * blockDim.x;
+	int pixely = threadIdx.y + blockIdx.y * blockDim.y;
+    if (pixelx >= w || pixely >= h) return;
+	int offset = pixelx + pixely * w;
+
+    float u = ((float)pixelx + 0.5f) * wMult;
+    float v = ((float)pixely + 0.5f) * hMult;
+    
+    vec3 rayOrigin = camera.position;
+    vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
+    Ray ray(rayOrigin, rayDest - rayOrigin);
+    
+    // Count triangle tests for this ray
+    int32_t testCount = countTriangleTests(d_bvh, d_triangles, ray);
+    
+    // Normalize test count to 0-1 range (using log scale for better distribution)
+    float normalizedCount = testCount > 0 ? logf((float)testCount + 1.0f) / logf((float)maxTests + 1.0f) : 0.0f;
+    
+    // Create a grayscale color based on test count
+    float intensity = normalizedCount;
+    vec3 color(intensity, intensity, intensity);
+    
+    // Calculate opacity based on test count (more tests = more opaque)
+    int alpha = (int)(128 + normalizedCount * 127); // 128-255 range
+    
+    ptr[offset] = make_uchar4(
+        fminf(255.0f, color.r * 255.0f), 
+        fminf(255.0f, color.g * 255.0f),
+        fminf(255.0f, color.b * 255.0f),
+        alpha
+    );
+}
+
 void resetFrameCount() {
     frameCount = 1;
+}
+
+void updateWindowTitle(GLFWwindow *window) {
+    std::string title = "BVH Ray Tracer - ";
+    if (visualizationMode == 0) {
+        title += "Normal Rendering";
+    } else if (visualizationMode == 1) {
+        title += "Test Count Visualization";
+    } else if (visualizationMode == 2) {
+        title += "Test Count with Opacity";
+    }
+    glfwSetWindowTitle(window, title.c_str());
 }
 
 int main() {
@@ -172,8 +363,8 @@ int main() {
         return -1;
     }
 
-
-    
+    // Set initial window title
+    updateWindowTitle(window);
 
     Shader shader(vertexShaderPath, fragmentShaderPath);
 
@@ -186,14 +377,20 @@ int main() {
 
     std::cout << "loading model from " << modelObjPath << std::endl;
     loadTrianglesAndMaterialsFromOBJ(modelObjPath, mtlBasePath, h_triangles, h_materials);
+    std::cout << "triangles loaded" << std::endl;
     h_bvh = createBVHandSortTriangles(h_triangles);
-    for (int i = 0; i < h_bvh.size(); i++) {
-        std::cout << h_bvh[i] << std::endl;
-    }
+    std::cout << "BVH created and triangles sorted" << std::endl;
+
+    // std::cout << "BVH size: " << h_bvh.size() << std::endl;
+    // for (int i = 0; i < h_bvh.size(); i++) {
+    //     std::cout << h_bvh[i] << std::endl;
+    // }
+
     uploadTrianglesToGPU(h_triangles, &d_triangles);
     uploadBVHToGPU(h_bvh, &d_bvh);
     std::cout << "BVH and triangles successfully uploaded to GPU" << std::endl;
 
+    std::cout << "Size of bvh node: " << sizeof(bvhNode) << std::endl;
     // materials
     Material *d_materials;
     size_t materialCount = h_materials.size();
@@ -269,13 +466,27 @@ int main() {
         float frameWeight = 1.0f / (float)frameCount;
         dim3 blocksPerGrid((screenWidth + 15)/16, (screenHeight + 15)/16);
         dim3 threadsPerBlock(16, 16);
-        render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
-            screenWidth, screenHeight, 
-            widthMultiplier, heightMultiplier,
-            camera, d_triangles, d_bvh, d_materials, d_states,
-            bounces, spp,
-            d_framebuffer, frameWeight
-        );
+        if (visualizationMode == 0) {
+            render<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
+                screenWidth, screenHeight, 
+                widthMultiplier, heightMultiplier,
+                camera, d_triangles, d_bvh, d_materials, d_states,
+                bounces, spp,
+                d_framebuffer, frameWeight
+            );
+        } else if (visualizationMode == 1) {
+            renderTestCount<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
+                screenWidth, screenHeight, 
+                widthMultiplier, heightMultiplier,
+                camera, d_triangles, d_bvh, h_triangles.size() * h_triangles.size() // Pass maxTests
+            );
+        } else if (visualizationMode == 2) {
+            renderTestCountOpacity<<<blocksPerGrid, threadsPerBlock>>>(device_pointer, 
+                screenWidth, screenHeight, 
+                widthMultiplier, heightMultiplier,
+                camera, d_triangles, d_bvh, h_triangles.size() * h_triangles.size() // Pass maxTests
+            );
+        }
         cudaDeviceSynchronize();
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
         stats.frameEnd();
@@ -296,6 +507,9 @@ int main() {
         processInput(window);
         glfwSwapBuffers(window);     // Swap double buffer
         glfwPollEvents();            // Handle input events
+        
+        // Update window title every frame to show current mode
+        updateWindowTitle(window);
     }
     stats.saveLog("./logs");
     takeScreenshot(window, "./logs");
@@ -345,6 +559,59 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE) {
         screenshotTaken = false;
     }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !screenshotTaken) {
+        visualizationMode = (visualizationMode + 1) % 3;
+        resetFrameCount(); // Reset frame count when switching modes
+        std::cout << "Visualization mode toggled: " << visualizationMode << std::endl;
+        updateWindowTitle(window);
+        screenshotTaken = true; // Prevent multiple toggles
+    }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE) {
+        screenshotTaken = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS && !screenshotTaken) {
+        std::cout << "\n=== Controls ===" << std::endl;
+        std::cout << "WASD: Move camera" << std::endl;
+        std::cout << "Mouse: Look around" << std::endl;
+        std::cout << "T: Toggle visualization mode (0: Normal, 1: Test Count, 2: Test Count with Opacity)" << std::endl;
+        // std::cout << "S: Show test count statistics" << std::endl;
+        std::cout << "P: Take screenshot" << std::endl;
+        std::cout << "H: Show this help" << std::endl;
+        std::cout << "M: Show current mode" << std::endl;
+        std::cout << "ESC: Exit" << std::endl;
+        std::cout << "================" << std::endl;
+        screenshotTaken = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_RELEASE) {
+        screenshotTaken = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS && !screenshotTaken) {
+        std::cout << "Current visualization mode: " << visualizationMode;
+        if (visualizationMode == 0) {
+            std::cout << " (Normal Rendering)";
+        } else if (visualizationMode == 1) {
+            std::cout << " (Test Count Visualization)";
+        } else if (visualizationMode == 2) {
+            std::cout << " (Test Count with Opacity)";
+        }
+        std::cout << std::endl;
+        screenshotTaken = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE) {
+        screenshotTaken = false;
+    }
+    // if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && !screenshotTaken) {
+    //     if (visualizationMode == 1 || visualizationMode == 2) { // Only show stats if test count is active
+    //         std::cout << "Calculating test count statistics..." << std::endl;
+    //         calculateTestCountStats(d_bvh, d_triangles, camera, h_triangles.size());
+    //     } else {
+    //         std::cout << "Test count visualization must be enabled (press T) to show statistics" << std::endl;
+    //     }
+    //     screenshotTaken = true;
+    // }
+    // if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
+    //     screenshotTaken = false;
+    // }
 }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
