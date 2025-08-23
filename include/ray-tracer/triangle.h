@@ -52,7 +52,7 @@ Triangle::calculate_hit_by(Ray &ray)
     
     vec3 p = ray.direction.cross(e2);
     float det = p.dot(e1);
-    if (det < 1e-5f) 
+    if (det < 1e-7f) 
         return;
     
     vec3 ao = ray.origin - va;

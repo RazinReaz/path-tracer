@@ -49,7 +49,7 @@ public:
         
         // Warm up run
         std::cout << "Warming up..." << std::endl;
-        auto warmup = createTree(triangles);
+        auto warmup = createBVHandSortTriangles(triangles);
         
         // Benchmark runs
         std::vector<long long> times;
@@ -59,7 +59,7 @@ public:
         for (int i = 0; i < iterations; i++) {
             auto start = std::chrono::high_resolution_clock::now();
             
-            auto bvh = createTree(triangles);
+            auto bvh = createBVHandSortTriangles(triangles);
             
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

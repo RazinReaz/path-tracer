@@ -51,21 +51,21 @@ __host__ __device__
 void
 Ray::set_hit(const float &distance, const vec3 &normal, const int &material_index)
 {
-    if (distance < 0 || distance > this->info.t)
+    if (distance < 0 || distance > info.t)
         return;
 
-    this->info.t = distance;
-    this->info.hit = true;
-    this->info.norm = normal;
-    this->info.mat_idx = material_index;
+    info.t = distance;
+    info.hit = true;
+    info.norm = normal;
+    info.mat_idx = material_index;
 }
 
 __host__ __device__ 
 void 
 Ray::set_origin_and_direction(const vec3& orig, const vec3& dir){
-    this->origin = orig;
-    this->direction = dir;
-    this->inv_direction = vec3(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
+    origin = orig;
+    direction = dir;
+    inv_direction = vec3(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
 }
 
 __host__ __device__

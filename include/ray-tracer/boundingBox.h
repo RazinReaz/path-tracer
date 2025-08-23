@@ -6,7 +6,7 @@
 #include "ray.h"
 #include "triangle.h"
 
-#define EPSILON 1e-4f
+#define EPSILON 1e-6f
 
 
 class BoundingBox

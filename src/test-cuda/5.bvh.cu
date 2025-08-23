@@ -31,8 +31,8 @@
 #include "utils/cuda_utils.h"
 #include "utils/renderStats.h"
 
-const int screenHeight = 512;
-const int screenWidth = 512;
+const int screenHeight = 640;
+const int screenWidth = 640;
 const int totalPixels = screenWidth * screenHeight;
 float aspect = screenWidth / screenHeight;
 float invWidth = 1.0f / screenWidth;
@@ -54,7 +54,7 @@ bool showTestCount = false; // Toggle for test count visualization
 bool showStats = false; // Toggle for statistics display
 int visualizationMode = 0; // 0: normal, 1: test count, 2: test count with opacity
 
-const int bounces = 5;
+const int bounces = 2;
 const int spp = 1;
 const int SEED = 42;
 int frameCount = 0;
@@ -140,19 +140,21 @@ void calculateTestCountStats(bvhNode *d_bvh, Triangle *d_triangles, Camera camer
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/test/";
-const char *modelObjPath = "assets/models/test/test.obj";
+const char *mtlBasePath = "assets/models/dragon/";
+const char *modelObjPath = "assets/models/dragon/dragon.obj";
 
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
-__global__ void initialize_rng(curandState_t *states, unsigned long seed, int total) {
+__global__ void initialize_rng(curandState_t* states, unsigned long seed, int total) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx > total) return;
+    if (idx >= total) return;
+    // Same seed for reproducibility, unique sequence per pixel
     curand_init(seed, idx, 0, &states[idx]);
 }
+
 
 __global__
 void render(
@@ -188,6 +190,7 @@ void render(
             ray.reset_hit();
             traverseTree(d_bvh, d_triangles, ray);
             if (!ray.info.hit) {
+                
                 vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
                 light += d_skycolor * attenuation;
                 break;
@@ -195,12 +198,11 @@ void render(
             Material mat = d_materials[ray.info.mat_idx];
             attenuation *= mat.albedo;
             light += mat.emission * attenuation;  //! this should be changed
-            state = states[offset];
             bounce(ray, mat, &state);
-            states[offset] = state;
         }
     }
     light.scale(1.0f / spp);
+    states[offset] = state;
 
     // write to framebuffer
     int base = offset * 3;
@@ -381,11 +383,6 @@ int main() {
     h_bvh = createBVHandSortTriangles(h_triangles);
     std::cout << "BVH created and triangles sorted" << std::endl;
 
-    // std::cout << "BVH size: " << h_bvh.size() << std::endl;
-    // for (int i = 0; i < h_bvh.size(); i++) {
-    //     std::cout << h_bvh[i] << std::endl;
-    // }
-
     uploadTrianglesToGPU(h_triangles, &d_triangles);
     uploadBVHToGPU(h_bvh, &d_bvh);
     std::cout << "BVH and triangles successfully uploaded to GPU" << std::endl;
@@ -407,7 +404,6 @@ int main() {
     curandState_t *d_states; //declare the states array
     CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandState_t))); // allocate space in the GPU for the states array
     initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
-    cudaDeviceSynchronize();
     std::cout << "rng states successfully initialized" << std::endl;
 
     // allocate memory for frame buffer

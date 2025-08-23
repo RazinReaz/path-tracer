@@ -111,8 +111,15 @@ After fixing that bug, I got 86 FPS in my test scene.
 
 Next up, specular BRDF and Refraction
 
+# BRDFs
+Since the beginning I wanted to make a physically accurate path tracer. which means that I neeed the rays to conserve energy. So far, I knew about a number of ways to sample a direction from a BRDF. For example,
+- define a fuzziness parameter for each material, scale a unit random 3D vector by the fuzziness parameter and then add it to the surface normal to get the direction of the ray
+- define a fuzziness parameter and `lerp` between a diffuse direction and perfect reflection direction
+I think the first one is called the Phong Model, which is not physically accurate. I am not sure about the second one. But since I am going to implent MIS later on, I think implementing pdfs is a good idea right now.  and there is a very good resource called [Crash Course on BRDFs](https://boksajak.github.io/files/CrashCourseBRDF.pdf) that helped me understand more about the microfacet model that needs pdfs too. 
 
-
+One thing that my current path tracer is doing accidentally (but accurately) is when I do
+`attenuation = mat.albedo`, I was actually supposed to do $$f_{diffuse} = \frac{mat.albedo \times (n \cdot w_i)}{\pi \times pdf(w_i)}$$
+but since the pdf of a cosine weighted hemisphere is $\frac{cos\theta}{\pi}$, the equation simplifies to $$f_{diffuse} = mat.albedo$$
 
 ## look out for
  - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 

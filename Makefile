@@ -106,3 +106,4 @@ run-bvh-benchmark: $(BINDIR)/benchmark/benchmark_bvh.run
 # rm -f $(BINDIR)/* $(OBJDIR)/*.o
 clean:
 	@if exist $(BINDIR) (for /R $(BINDIR) %%f in (*.run) do del "%%f")
+	@if exist $(OBJDIR) (for /R $(OBJDIR) %%f in (*.obj) do del "%%f")

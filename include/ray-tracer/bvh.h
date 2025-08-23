@@ -36,8 +36,8 @@ typedef struct bvhNode {
     }
 } bvhNode;
 
-const int BITS = 7;
-const int MAX_DEPTH = 16;
+const int BITS = 10;
+const int MAX_DEPTH = 32;
 
 inline std::ostream& operator<<(std::ostream& os, const bvhNode& node) {
     os << "bvhNode(";
