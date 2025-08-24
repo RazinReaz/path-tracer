@@ -121,6 +121,8 @@ One thing that my current path tracer is doing accidentally (but accurately) is 
 `attenuation = mat.albedo`, I was actually supposed to do $$f_{diffuse} = \frac{mat.albedo \times (n \cdot w_i)}{\pi \times pdf(w_i)}$$
 but since the pdf of a cosine weighted hemisphere is $\frac{cos\theta}{\pi}$, the equation simplifies to $$f_{diffuse} = mat.albedo$$
 
+I think I have to switch from using wavefront obj models to gltf models.
+
 ## look out for
  - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 
  ChatGPT said, since the camera is changing, I should not use `__constant__` or pass the pointer. dereferencing pointer takes up time.
