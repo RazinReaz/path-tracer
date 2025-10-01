@@ -123,6 +123,11 @@ but since the pdf of a cosine weighted hemisphere is $\frac{cos\theta}{\pi}$, th
 
 I think I have to switch from using wavefront obj models to gltf models.
 
+## gltf
+first a little refactor here and there, rolling back the changes because it doesn't work and retrying something else later, I managed to now clean up the code a bit. 
+
+So, basically the gltf works with nodes and there are transforamtions needed to be applied on those nodes. Since I am not using glm anymore, let's write a matrix class (but only for transformations   )
+
 ## look out for
  - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 
  ChatGPT said, since the camera is changing, I should not use `__constant__` or pass the pointer. dereferencing pointer takes up time.

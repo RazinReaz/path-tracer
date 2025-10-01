@@ -67,6 +67,8 @@ $(BINDIR)/4.materials.run: src/test-cuda/4.materials.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/5.bvh.run: src/test-cuda/5.bvh.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
+$(BINDIR)/6.pbr.run: src/test-cuda/6.pbr.cu $(CPP_OBJ)
+	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 
 $(BINDIR)/test/random-unit-vector.run: src/test/random-unit-vector.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)

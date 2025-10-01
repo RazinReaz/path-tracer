@@ -4,9 +4,12 @@
 
 #include <iostream>
 
-#define CUDA_CHECK(err)                                                                                 \
-    if ((err) != cudaSuccess)                                                                           \
-    {                                                                                                   \
-        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " at line " << __LINE__ << " of file " << __FILE__ << std::endl; \
-        exit(1);                                                                                        \
-    }
+#define CUDA_CHECK(err) do { \
+    cudaError_t err_ = (err); \
+    if (err_ != cudaSuccess) { \
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err_) \
+                  << " at line " << __LINE__ \
+                  << " of file " << __FILE__ << std::endl; \
+        exit(1); \
+    } \
+} while(0)

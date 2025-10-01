@@ -1,15 +1,15 @@
 #pragma once
 
 #include <curand_kernel.h>
+#include <iostream>
 
 #include "math/vec3.h"
 #include "utils/vec3_utils.h"
 #include "ray-tracer/ray.h"
 
 enum MaterialType {
-    LAMBERTIAN,
-    METALLIC,
-    EMISSIVE,
+    DIFFUSE,
+    SPECULAR,
 };
 
 
@@ -17,21 +17,26 @@ typedef struct Material {
     enum MaterialType type;
     vec3 albedo;
     vec3 emission;
+    float ior;
+    float roughness;
+    float metalness;
 } Material;
 
-#include <iostream>
+
 
 inline std::ostream& operator<<(std::ostream& os, const Material& mat) {
     os << "Material(";
     switch (mat.type) {
-        case LAMBERTIAN: os << "LAMBERTIAN"; break;
-        case METALLIC:   os << "METALLIC"; break;
-        case EMISSIVE:   os << "EMISSIVE"; break;
+        case DIFFUSE: os << "DIFFUSE"; break;
+        case SPECULAR:   os << "SPECULAR"; break;
         default:         os << "UNKNOWN"; break;
     }
     os << ", albedo: (" << mat.albedo.x << ", " << mat.albedo.y << ", " << mat.albedo.z << ")";
     os << ", emission: (" << mat.emission.x << ", " << mat.emission.y << ", " << mat.emission.z << ")";
-    os << ")";
+    os << ", ior: " << mat.ior;
+    os << ", roughness:" << mat.roughness;
+    os << ", metalness: " << mat.metalness;
+    os << ") size: " << sizeof(Material);
     return os;
 }
 
@@ -54,16 +59,13 @@ void scatter_ray(Ray& ray, curandState_t *state)
 __device__ 
 Ray bounce(Ray &ray, Material &material, curandState_t *state)
 {
-    // handles LAMBERTIAN and METALLIC materials
+    // handles DIFFUSE and METALLIC materials
     switch (material.type) {
-        case MaterialType::LAMBERTIAN:
-            scatter_ray(ray, state);
-            break;
-        case MaterialType::EMISSIVE:
+        case MaterialType::DIFFUSE:
             scatter_ray(ray, state);
             break;
         default:
-            // For now, we only handle Lambertian materials
+            // For now, we only handle diffuse materials
             // Other materials can be added later
             break;
     }

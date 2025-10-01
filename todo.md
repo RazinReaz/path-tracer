@@ -44,5 +44,8 @@
 - [ ] **BUG** ray bounce on the edge of a triangle
 - [x] frame accumulation
     - [x] **FIXED**: sky color gets overpowered rather than emissive power
-- [ ] BVH
-    - [ ] ray  cube intersection in p5.js 3d
+- [x] BVH
+    - [x] ray  cube intersection in p5.js 3d
+    - [x] BVH minimization done
+- [ ] BRDF
+- [ ] optimize the temporary vec3s

@@ -10,7 +10,6 @@
 #include <vector>
 #include <ctime>
 #include <iomanip>
-#include <sstream>
 
 
 // for taking screenshots
@@ -27,12 +26,14 @@
 #include "ray-tracer/scene.h"
 #include "ray-tracer/materials.h"
 #include "ray-tracer/bvh.h"
-#include "utils/scene_loader.h"
+#include "scene-loader/SceneLoader.h"
+#include "scene-loader/OBJloader.h"
+#include "scene-loader/upload.h"
 #include "utils/cuda_utils.h"
 #include "utils/renderStats.h"
 
-const int screenHeight = 640;
-const int screenWidth = 640;
+const int screenHeight = 512;
+const int screenWidth = 512;
 const int totalPixels = screenWidth * screenHeight;
 float aspect = screenWidth / screenHeight;
 float invWidth = 1.0f / screenWidth;
@@ -140,11 +141,8 @@ void calculateTestCountStats(bvhNode *d_bvh, Triangle *d_triangles, Camera camer
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/dragon/";
-const char *modelObjPath = "assets/models/dragon/dragon.obj";
-
-// const char *modelObjPath = "assets/models/cube/cube.obj";
-// const char *mtlBasePath = "assets/models/cube/";
+const char *mtlBasePath = "assets/models/obj/pbr-test/";
+const char *modelObjPath = "assets/models/obj/pbr-test/test.obj";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
@@ -216,6 +214,7 @@ void render(
         fminf(255.0f, d_framebuffer[base + 2] * 255.0f),
         255
     );
+
 }
 
 __global__
@@ -369,19 +368,23 @@ int main() {
     updateWindowTitle(window);
 
     Shader shader(vertexShaderPath, fragmentShaderPath);
+    SceneLoader *loader = new OBJLoader(modelObjPath, mtlBasePath);
 
     Triangle *d_triangles;
     bvhNode *d_bvh;
+    Material *d_materials;
+    float *d_framebuffer;
 
     std::vector<Triangle> h_triangles;
     std::vector<Material> h_materials;
     std::vector<bvhNode> h_bvh;
 
     std::cout << "loading model from " << modelObjPath << std::endl;
-    loadTrianglesAndMaterialsFromOBJ(modelObjPath, mtlBasePath, h_triangles, h_materials);
-    std::cout << "triangles loaded" << std::endl;
+    loader->loadTrianglesAndMaterials(h_triangles, h_materials);
+    std::cout << "triangles and PBR materials loaded" << std::endl;
     h_bvh = createBVHandSortTriangles(h_triangles);
     std::cout << "BVH created and triangles sorted" << std::endl;
+
 
     uploadTrianglesToGPU(h_triangles, &d_triangles);
     uploadBVHToGPU(h_bvh, &d_bvh);
@@ -389,15 +392,7 @@ int main() {
 
     std::cout << "Size of bvh node: " << sizeof(bvhNode) << std::endl;
     // materials
-    Material *d_materials;
-    size_t materialCount = h_materials.size();
-    if (materialCount == 0) {
-        std::cerr << "No materials found in the model. Exiting." << std::endl;
-        //TODO: if no materials then define default ones?
-        return -1;
-    }
-    CUDA_CHECK(cudaMalloc(&d_materials, materialCount * sizeof(Material)));
-    CUDA_CHECK(cudaMemcpy(d_materials, h_materials.data(), materialCount * sizeof(Material), cudaMemcpyHostToDevice));
+    uploadMaterialsToGPU(h_materials, &d_materials);
     std::cout << "Materials successfully uploaded to GPU" << std::endl;
 
     //curand stuff
@@ -407,9 +402,7 @@ int main() {
     std::cout << "rng states successfully initialized" << std::endl;
 
     // allocate memory for frame buffer
-    float *d_framebuffer;
-    CUDA_CHECK(cudaMalloc(&d_framebuffer, totalPixels * 3 * sizeof(float)));
-    CUDA_CHECK(cudaMemset(d_framebuffer, 0, totalPixels * 3 * sizeof(float)));
+    allocateFrameBuffer(totalPixels, &d_framebuffer);
     std::cout << "Framebuffer successfully allocated" << std::endl;
     
 
@@ -454,9 +447,6 @@ int main() {
         cudaGraphicsMapResources(1, &cuda_resource, NULL);        
         cudaGraphicsResourceGetMappedPointer((void**)&device_pointer, &size, cuda_resource);
         
-        //#######################################################
-        //################## stats start ########################
-        //#######################################################
         stats.frameStart();
         frameCount++;
         float frameWeight = 1.0f / (float)frameCount;
@@ -486,9 +476,7 @@ int main() {
         cudaDeviceSynchronize();
         cudaGraphicsUnmapResources(1, &cuda_resource, NULL);
         stats.frameEnd();
-        //#####################################################
-        //################## stats end ########################
-        //#####################################################
+
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
         glActiveTexture(GL_TEXTURE0);
@@ -515,9 +503,10 @@ int main() {
     glDeleteTextures(1, &texture);
     cudaGraphicsUnregisterResource(cuda_resource);
     CUDA_CHECK(cudaFree(d_states));
-    CUDA_CHECK(cudaFree(d_materials));
-    CUDA_CHECK(cudaFree(d_framebuffer));
+
+    freeMaterialsFromGPU(d_materials);
     freeTrianglesFromGPU(d_triangles);
+    freeFrameBuffer(d_framebuffer);
     freeBVHFromGPU(d_bvh);
 
     glfwDestroyWindow(window); //! order of operation correct?

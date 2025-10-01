@@ -63,8 +63,8 @@ void takeScreenshot(GLFWwindow *window, const std::string &filename);
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/test/";
-const char *modelObjPath = "assets/models/test/test.obj";
+const char *mtlBasePath = "assets/models/obj/test/";
+const char *modelObjPath = "assets/models/obj/test/test.obj";
 // const char *modelObjPath = "assets/models/cube/cube.obj";
 // const char *mtlBasePath = "assets/models/cube/";
 

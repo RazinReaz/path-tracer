@@ -22,6 +22,7 @@ public:
         float data[4];
     };
     __host__ __device__ inline vec3(float x = 0, float y = 0, float z = 0);
+    __host__ __device__ __forceinline__ void setXYZ(float x, float y, float z);
     __host__ __device__ __forceinline__ float length() const;
     __host__ __device__ __forceinline__ float length_squared() const;
     __host__ __device__ __forceinline__ vec3 normalize() const;
@@ -35,14 +36,15 @@ public:
     // void something before scale()
     __host__ __device__ __forceinline__ vec3 operator+(const vec3 &v) const;
     __host__ __device__ __forceinline__ vec3 operator-(const vec3 &v) const;
-    __host__ __device__ __forceinline__ vec3 operator*(const float scalar) const;
+    __host__ __device__ __forceinline__ vec3 operator*(const float& scalar) const;
     __host__ __device__ __forceinline__ vec3 operator*(const vec3 &v) const;
     __host__ __device__ __forceinline__ vec3 operator/(const float scalar) const;
     __host__ __device__ __forceinline__ vec3 operator/(const vec3 &v) const;
-    __host__ __device__ __forceinline__ vec3 &operator=(const vec3 &v);
+    __host__ __device__ __forceinline__ vec3& operator=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator+=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator-=(const vec3 &v);
     __host__ __device__ __forceinline__ vec3 operator*=(const vec3 &v);
+    __host__ __device__ __forceinline__ vec3 operator-() const;
 };
 
 ///////////////////////////////
@@ -79,6 +81,14 @@ __host__ __device__ float vec3::inverse_sqrt(const float x) const
 __host__ __device__ inline vec3::vec3(float x, float y, float z)
     : x(x), y(y), z(z), w(1)
 {
+}
+
+__host__ __device__ __forceinline__ void vec3::setXYZ(float x, float y, float z)
+{
+    this->x = x;
+    this->y = y;
+    this->z = z;
+    this->w = 1;
 }
 
 __host__ __device__ __forceinline__ float vec3::length() const
@@ -143,12 +153,12 @@ __host__ __device__ __forceinline__ vec3 vec3::operator-(const vec3 &v) const
     return vec3(x - v.x, y - v.y, z - v.z);
 }
 
-__host__ __device__ __forceinline__ vec3 vec3::operator*(const float scalar) const
+__host__ __device__ __forceinline__ vec3 vec3::operator*(const float& scalar) const
 {
     return vec3(x * scalar, y * scalar, z * scalar);
 }
 // this is not a member function
-__host__ __device__ __forceinline__ vec3 operator*(const float scalar, const vec3 &v)
+__host__ __device__ __forceinline__ vec3 operator*(const float& scalar, const vec3 &v)
 {
     return vec3(v.x * scalar, v.y * scalar, v.z * scalar);
 }
@@ -200,6 +210,10 @@ __host__ __device__ __forceinline__ vec3 vec3::operator*=(const vec3 &v)
     return *this;
 }
 
+__host__ __device__ __forceinline__ vec3 vec3::operator-() const{
+    return vec3(-x, -y, -z);
+}
+
 __host__ __device__ __forceinline__ vec3 vec3::scale(float sx, float sy, float sz)
 {
     x *= sx;
@@ -220,4 +234,8 @@ inline std::ostream &operator<<(std::ostream &os, const vec3 &v)
 {
     os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
     return os;
+}
+
+inline __host__ __device__ vec3 reflect(const vec3& V, const vec3& N) {
+    return V - 2 * V.dot(N) * N;
 }

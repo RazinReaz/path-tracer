@@ -1,9 +1,19 @@
 #pragma once
 
 #include <math.h>
+#include <cuda_runtime.h>
 #include <curand_kernel.h>
 #include "math/defines.h"
 #include "math/vec3.h"
+
+
+__device__ __host__ __forceinline__ vec3 lerp(const vec3& a, const vec3& b, const float& t) {
+    return a * (1.0f - t) + b * t;
+}
+
+__device__ __host__ __forceinline__ float lerp(const float& a, const float& b, const float& t) {
+    return a * (1.0f - t) + b * t;
+}
 
 __device__ inline vec3 random_vec_on_disk(curandState_t *state) {
     float u = curand_uniform(state) * 2.0f - 1.0f;
@@ -25,25 +35,6 @@ __device__ inline vec3 random_vec_on_disk(curandState_t *state) {
     return vec3(r * cosf(theta), r * sinf(theta), 0.0f);
 }
 
-
-// __device__ inline vec3 random_unit_vec3(curandState_t *state) {
-//     // Uniform random unit vector in 3D (spherical coordinates)
-//     float z = curand_uniform(state) * 2.0f - 1.0f;  // [-1, 1]
-//     float a = curand_uniform(state) * 2.0f * PI; // [0, 2π]
-//     float r = sqrtf(fmaxf(0.0f, 1.0f - z * z));
-//     return vec3(r * cosf(a), r * sinf(a), z);
-// }
-
-// __device__ inline vec3 biased_unit_vec3_on_hemisphere(curandState_t *state) {
-//     vec3 zAxis(0.0f, 0.0f, 1.0f);
-//     vec3 candidate;
-//     do {
-//         candidate = random_unit_vec3(state) + zAxis;
-//     } while (candidate.length_squared() < 1e-6f); // Avoid near-zero vectors
-
-//     return candidate.normalize();
-// }
-
 __device__ inline vec3 unit_vec3_on_hemisphere(curandState_t *state){
     // give us an uniformly distributed random unit 3d vector on a hemisphere on the xy plane 
     // uses Malley's cosine weighted sampling technique
@@ -52,7 +43,25 @@ __device__ inline vec3 unit_vec3_on_hemisphere(curandState_t *state){
     return vec3(v.x, v.y, z);
 }
 
+__device__ inline void orthonormal_basis_frisvad(const vec3& normal, vec3& tangent, vec3& bitangent) {
+    /* 
+        tangent: X axis
+        bitangent: Y axis
+        normal: Z axis
+    */
+    if (normal.z < - 0.999f) {
+        tangent.setXYZ(0.0f, -1.0f, 0.0f);
+        bitangent.setXYZ(-1.0f, 0.0f, 0.0f);
+    }
+    else {
+        float a = 1.0f / (1.0f + normal.z);
+        float b = - normal.x * normal.y * a;
+        tangent.setXYZ(1.0f - normal.x * normal.x * a, b, - normal.x);
+        bitangent.setXYZ(b, 1.0f - normal.y * normal.y * a, - normal.y);
+    }
+}
 
+//! orthonormal basis by frisvad
 __device__ inline vec3 rotate_to_align_hemiZ_to_normal(const vec3& v, const vec3& normal) {
     // the v vector is a uniformly sampled unit vector on the +Z hemisphere
     // we need to transform it to the orthonormal basis of the normal on the surface
@@ -69,6 +78,12 @@ __device__ vec3 scatter_along(vec3 normal, curandState_t *state) {
     dir = rotate_to_align_hemiZ_to_normal(dir, normal);
     return dir;
 }
+
+__host__ bool is_zero_vector(float x, float y, float z) {
+    return x == 0.0f && y == 0.0f && z == 0.0f;
+}
+
+
 
 
 
