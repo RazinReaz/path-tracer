@@ -236,6 +236,16 @@ inline std::ostream &operator<<(std::ostream &os, const vec3 &v)
     return os;
 }
 
-inline __host__ __device__ vec3 reflect(const vec3& V, const vec3& N) {
-    return V - 2 * V.dot(N) * N;
+inline __host__ __device__ vec3 reflect(const vec3& R, const vec3& N) {
+    return R - 2 * R.dot(N) * N;
 }
+inline __host__ __device__ vec3 refract(const vec3& R, const vec3& N, const float& ior1, const float& ior2) {
+    // R has the direction from camera to surface (only for the first bounce)
+    float cosI = fminf(-R.dot(N), 1.0f);
+    float ratio = ior1 / ior2;
+    float sinT2 = ratio * ratio * (1.0f - cosI * cosI);    
+    vec3 r_out_parallel = -N * sqrtf(1.0f - sinT2);
+    vec3 r_out_perp = ratio * (R + cosI * N);
+    return r_out_parallel + r_out_perp;
+}
+

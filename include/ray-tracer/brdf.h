@@ -65,7 +65,8 @@ __device__ __forceinline__ vec3 sampleGGXVNDF(const vec3& Vlocal, const float& a
 
 
 // Will calculate the weight and the new ray Direction according to the BRDF of the material
-__device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, curandState_t *state, vec3& newdir, vec3& weight) {
+// Will also push the ior to the info
+__device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, curandState_t *state, vec3& newdir, vec3& weight, Info& info) {
     /*
         N: surface normal
         V: -ray.direction
@@ -73,6 +74,7 @@ __device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, cura
         state: random state
         newdir: ray direction after bounce (passed by reference)
         weight: weight of the new ray (passed by reference)
+        info: info of the ray (passed by reference)
     */
     // parameters calc
     float alpha = mat.roughness * mat.roughness;
@@ -110,6 +112,24 @@ __device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, cura
         vec3 F = evalFresnelSchlick(specF0, shadowedF90(specF0), HdotL);
         weight = F * specularSampleWeight(alpha, alphaSq, NdotL, NdotV);
         newdir = Llocal.x * tangent + Llocal.y * bitangent + Llocal.z * N;
+        return;
+    } else if (mat.type == MaterialType::REFRACTIVE) {
+        float ior1, ior2;
+        if (info.backface) { // entering air
+            ior1 = mat.ior;
+            ior2 = 1.0f;
+        } else {
+            ior1 = 1.0f;
+            ior2 = mat.ior;
+        }
+        float F = fresnel(-V, N, ior1, ior2);
+        float u = curand_uniform(state);
+        if (F > u) {
+            newdir = reflect(-V, N);
+        } else {
+            newdir = refract(-V, N, ior1, ior2);
+        }
+        weight.setXYZ(1.0f, 1.0f, 1.0f);
         return;
     }
 }

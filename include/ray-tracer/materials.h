@@ -10,6 +10,7 @@
 enum MaterialType {
     DIFFUSE,
     SPECULAR,
+    REFRACTIVE,
 };
 
 
@@ -17,7 +18,7 @@ typedef struct Material {
     enum MaterialType type;
     vec3 albedo;
     vec3 emission;
-    float ior;
+    float ior; // ior[0] is for vacuum/air. 
     float roughness;
     float metalness;
 } Material;
@@ -29,6 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Material& mat) {
     switch (mat.type) {
         case DIFFUSE: os << "DIFFUSE"; break;
         case SPECULAR:   os << "SPECULAR"; break;
+        case REFRACTIVE: os << "REFRACTIVE"; break;
         default:         os << "UNKNOWN"; break;
     }
     os << ", albedo: (" << mat.albedo.x << ", " << mat.albedo.y << ", " << mat.albedo.z << ")";

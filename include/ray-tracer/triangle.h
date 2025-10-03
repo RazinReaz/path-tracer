@@ -15,7 +15,9 @@ public:
     Triangle(const vec3 &va, const vec3 &vb, const vec3 &vc, const vec3 &na, const vec3 &nb, const vec3 &nc, int material_index);
     
     __host__ __device__
-    void calculate_hit_by(Ray& ray);
+    void calculate_one_side_hit_by(Ray& ray);
+    __host__ __device__
+    void calculate_both_side_hit_by(Ray& ray);
     __host__
     friend std::ostream& operator<<(std::ostream& os, const Triangle& t) {
         os << "Triangle(va: " << t.va << ", vb: " << t.vb << ", vc: " << t.vc << ", material_index: " << t.material_index << ")";
@@ -44,7 +46,42 @@ Triangle::interpolate_norm(const float u, const float v)
 
 __host__ __device__
 void
-Triangle::calculate_hit_by(Ray &ray)
+Triangle::calculate_both_side_hit_by(Ray &ray)
+{
+    // moller trumbore algorithm
+    vec3 e1 = vb - va;
+    vec3 e2 = vc - va;
+    
+    vec3 p = ray.direction.cross(e2);
+    float det = p.dot(e1);
+    if (det > -1e-7f && det < 1e-7f) 
+        return;
+    float inv_det = 1.0f / det;
+    
+    vec3 ao = ray.origin - va;
+    float u = p.dot(ao) * inv_det;
+    if (u < 0.0f || u > 1.0f)
+        return;
+    
+    vec3 q = ao.cross(e1);
+    float v = q.dot(ray.direction) * inv_det;
+    if (v < 0.0f || u + v > 1.0f)
+        return;
+    
+    float distance = q.dot(e2) * inv_det;
+    if (distance < 0)
+        return;
+
+    vec3 normal = interpolate_norm(u, v);
+    float dot = ray.direction.dot(normal);
+    if (dot > 0) normal = -1 * normal;
+    ray.set_hit(distance, normal, material_index, dot > 0);
+    return;
+}
+
+__host__ __device__
+void
+Triangle::calculate_one_side_hit_by(Ray &ray)
 {
     // moller trumbore algorithm
     vec3 e1 = vb - va;
@@ -75,7 +112,7 @@ Triangle::calculate_hit_by(Ray &ray)
 
     vec3 normal = interpolate_norm(u, v);
     float dot = ray.direction.dot(normal);
-    if (dot > 0) normal = -1 * normal;
-    ray.set_hit(distance, normal, material_index);
+    // if (dot > 0) normal = -1 * normal;
+    ray.set_hit(distance, normal, material_index, dot > 0);
     return;
 }

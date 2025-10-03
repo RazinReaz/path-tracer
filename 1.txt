@@ -1,2 +1,2 @@
 cd E:\Programming\Simulations\raytracing-gpu
-make run-1.cuda_opengl_interop
+make clean && make run-6.pbr

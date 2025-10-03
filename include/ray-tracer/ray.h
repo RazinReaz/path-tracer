@@ -4,21 +4,26 @@
 #include <ostream>
 #include <cfloat> // for FLT_MAX
 
+const int MAX_IOR_DEPTH = 4;
 
 typedef struct Info
-{
-    bool hit;
-    double t;
-    vec3 norm;
+{  
+    float t;
     int mat_idx;
+    vec3 norm;
+    float ior;
+    bool hit;
+    bool backface;
 } Info;
+
+
 
 class Ray {
 private:
 public:
     // __host__ __device__ Ray();
     __host__ __device__ Ray(const vec3 &origin, const vec3& direction);
-    __host__ __device__ void set_hit(const float &distance, const vec3 &normal, const int& material_index);
+    __host__ __device__ void set_hit(const float &distance, const vec3 &normal, const int& material_index, const bool &backface);
     __host__ __device__ void set_origin_and_direction(const vec3& orig, const vec3& dir);
     __host__ __device__ void reset_hit();
     
@@ -45,11 +50,13 @@ Ray::Ray(const vec3 &orig, const vec3 &dir)
     info.t = FLT_MAX;
     info.norm = vec3(0.0f, 0.0f, 0.0f);
     info.mat_idx = -1;
+    info.ior = 1.0f;
+    info.backface = false;
 }
 
 __host__ __device__
 void
-Ray::set_hit(const float &distance, const vec3 &normal, const int &material_index)
+Ray::set_hit(const float &distance, const vec3 &normal, const int &material_index, const bool &backface)
 {
     if (distance < 0 || distance > info.t)
         return;
@@ -58,6 +65,7 @@ Ray::set_hit(const float &distance, const vec3 &normal, const int &material_inde
     info.hit = true;
     info.norm = normal;
     info.mat_idx = material_index;
+    info.backface = backface;
 }
 
 __host__ __device__ 
@@ -75,5 +83,7 @@ Ray::reset_hit(){
     info.t = FLT_MAX;
     info.norm = vec3(0.0f, 0.0f, 0.0f);
     info.mat_idx = -1;
+    info.backface = false;
 }
+
 

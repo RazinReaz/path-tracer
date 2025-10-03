@@ -23,11 +23,6 @@ OBJLoader::OBJLoader(const std::string &filename, const std::string &mtlBasePath
 
 void OBJLoader::loadTrianglesAndMaterials(std::vector<Triangle> &outTriangles, std::vector<Material> &outMaterials)
 {
-    // tinyobj::attrib_t attrib;
-    // std::vector<tinyobj::shape_t> shapes;
-    // std::vector<tinyobj::material_t> materials;
-    // std::string warn, err;
-
     tinyobj::ObjReaderConfig reader_config;
     reader_config.mtl_search_path = m_mtlBasePath;
     tinyobj::ObjReader reader;
@@ -45,28 +40,10 @@ void OBJLoader::loadTrianglesAndMaterials(std::vector<Triangle> &outTriangles, s
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& materials = reader.GetMaterials();
-    // bool ret = tinyobj::LoadObj(
-    //     &attrib,
-    //     &shapes,
-    //     &materials,
-    //     &warn,
-    //     &err,
-    //     m_filename.c_str(),
-    //     m_mtlBasePath.c_str(),  // provide MTL base path
-    //     true                  // load .mtl
-    // );
 
     outMaterials.clear();
     for (const auto &mat : materials) {
         Material m;
-        // m.type = MaterialType::DIFFUSE;
-        // if (!is_zero_vector(mat.specular[0], mat.specular[1], mat.specular[2]) && mat.shininess > 10.0f) {
-        //     m.type = MaterialType::SPECULAR;
-        //     m.albedo = vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
-        // } else {
-        //     m.type = MaterialType::DIFFUSE;
-        //     m.albedo = vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-        // }
         if (mat.roughness > 0.01f) {
             m.roughness = mat.roughness;
         } else {
@@ -74,7 +51,11 @@ void OBJLoader::loadTrianglesAndMaterials(std::vector<Triangle> &outTriangles, s
         }
         m.ior = mat.ior;
         m.metalness = mat.metallic;
-        if (m.metalness > 0.5f) {
+        if (m.ior > 1.0f && mat.dissolve < 1.0f){
+            m.type = MaterialType::REFRACTIVE;
+            m.albedo = vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+        }
+        else if (m.metalness > 0.5f) {
             m.type = MaterialType::SPECULAR;
             m.albedo = vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
             if (is_zero_vector(m.albedo.r, m.albedo.g, m.albedo.b)) {

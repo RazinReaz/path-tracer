@@ -19,33 +19,36 @@
 - [x] learn about textures
     - [ ] Texture units
 
-- [ ] show the cube in the window from `obj` file
+- [x] show the cube in the window from `obj` file
 - [ ] make sure to have a proper readme file so that others can download `glm` `glfw` and `glad` and run the code
 
 - [x] fix cuda opengl interop
 - [x] write a vec3 class that works on the GPU
-- [ ] refactor:
     - [x] remove `glm` from all files
     - [x] move the definitions from the `.cu` files to the `.h` files
     - `camera.h` file needs major overhaul. if I don't include any `glm` functions, the other files that used only opengl will not work.
-- [ ] `alignas(16)` for warp efficiency?
-- [ ] `camera` is global in `2.movement.cu`. A lot of global variables actually
 - [x] should all camera functions be in device? I mean, the camera controls?
 - [x] fix the y flip bug
-- [ ] find out hist and device tips and tricks to boost performance
-- [ ] implement BVH on the global memory
+- [x] implement BVH on the global memory
 - [x] implement random unit vector
     - 2d point on disk
-    - Malley's cosine distributed uniformly distributed random unit vector
     - align the hemisphere along the normal
 - [x] implement materials
     - [x] lambertian
     - [x] emissive
-- [ ] **BUG** ray bounce on the edge of a triangle
 - [x] frame accumulation
     - [x] **FIXED**: sky color gets overpowered rather than emissive power
 - [x] BVH
     - [x] ray  cube intersection in p5.js 3d
     - [x] BVH minimization done
-- [ ] BRDF
+- [x] BRDF
+- [ ] direct illumination
+- [ ] refraction
+
+- [ ] `camera` is global in `2.movement.cu`. A lot of global variables actually
 - [ ] optimize the temporary vec3s
+- [ ] **BUG** ray bounce on the edge of a triangle
+- [ ] refactor:
+    - Malley's cosine distributed uniformly distributed random unit vector
+- [ ] find out host and device tips and tricks to boost performance
+- [ ] `alignas(16)` for warp efficiency?

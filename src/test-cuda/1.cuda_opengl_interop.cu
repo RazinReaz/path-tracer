@@ -43,7 +43,7 @@ void __global__ kernel(uchar4 *ptr, Triangle tri) {
     
     
     vec3 color;
-    tri.calculate_hit_by(ray);
+    tri.calculate_one_side_hit_by(ray);
     if (ray.info.hit) {
         color.r = 1.0f;
     }

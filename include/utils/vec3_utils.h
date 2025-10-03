@@ -84,6 +84,47 @@ __host__ bool is_zero_vector(float x, float y, float z) {
 }
 
 
+// __host__ __device__ float fresnel(const vec3& r, const vec3& n, float ior1, float ior2) {
+//     // r is the incident ray direction (camera to surface)
+//     float r0 = (ior1 - ior2) / (ior1 + ior2);
+//     r0 = r0 * r0;
+//     float cosT = fminf(-r.dot(n), 1.0f);
+//     float ratio = ior1 / ior2;
+//     float sinX2 = ratio * ratio * (1.0f - cosT * cosT);
+//     if (sinX2 > 1.0f) {
+//         return 1.0f;
+//     }
+//     float cosX = sqrtf(1.0f - sinX2);
+//     float x = 1.0f - cosX;
+//     return r0 + (1.0f - r0) * x * x * x * x * x;
+// }
+
+__host__ __device__ 
+float fresnel(const vec3& r, const vec3& n, float ior1, float ior2) {
+    float r0 = (ior1 - ior2) / (ior1 + ior2);
+    r0 = r0 * r0;
+
+    // Use the cosine of the incident angle.
+    float cosI = fminf(-r.dot(n), 1.0f);
+
+    // If exiting a dense medium, check for Total Internal Reflection
+    if (ior1 > ior2) {
+        float ratio = ior1 / ior2;
+        float sinT2 = ratio * ratio * (1.0f - cosI * cosI);
+        if (sinT2 > 1.0f) {
+            return 1.0f; // TIR means 100% reflection
+        }
+        // When exiting, the formula is more accurate using the transmitted angle's cosine
+        float cosT = sqrtf(1.0f - sinT2);
+        float x = 1.0f - cosT;
+        return r0 + (1.0f - r0) * x * x * x * x * x;
+    }
+
+    // Otherwise, use the standard Schlick approximation with the incident angle
+    float x = 1.0f - cosI;
+    return r0 + (1.0f - r0) * x * x * x * x * x;
+}
+
 
 
 

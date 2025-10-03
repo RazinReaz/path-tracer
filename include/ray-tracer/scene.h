@@ -16,7 +16,7 @@ class Scene {
 __host__ __device__
 void Scene::calculate_hit_by(Ray &ray) {
     for (size_t i = 0; i < triangle_count; ++i) {
-        triangles[i].calculate_hit_by(ray);
+        triangles[i].calculate_one_side_hit_by(ray);
     }
 }
 

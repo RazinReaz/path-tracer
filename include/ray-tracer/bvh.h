@@ -218,7 +218,7 @@ void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
         int32_t nodeIndex = nodeIndexStack[--stackPointer];
         if (d_BVH[nodeIndex].isLeaf()) {            
             for (int b = d_BVH[nodeIndex].triangleIndex, i = 0; i < d_BVH[nodeIndex].triangleCount; i++) {
-                d_triangles[b + i].calculate_hit_by(ray);
+                d_triangles[b + i].calculate_both_side_hit_by(ray);
             }
         } else {
             int32_t L = d_BVH[nodeIndex].leftChildIndex;

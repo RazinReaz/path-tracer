@@ -107,7 +107,7 @@ void render(
         int nBounces = bounces;
         while(nBounces--) {
             ray.reset_hit();
-            d_scene->calculate_hit_by(ray);
+            d_scene->calculate_one_side_hit_by(ray);
             if (!ray.info.hit) {
                 // vec3 d_skycolor(0.1f, 0.1f, 0.1f);  //! this should be changed 
                 vec3 d_skycolor(0.63f, 0.85f, 0.92f);  //! this should be changed 
