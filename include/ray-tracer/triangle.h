@@ -112,7 +112,7 @@ Triangle::calculate_one_side_hit_by(Ray &ray)
 
     vec3 normal = interpolate_norm(u, v);
     float dot = ray.direction.dot(normal);
-    // if (dot > 0) normal = -1 * normal;
+    if (dot > 0) normal = -1 * normal;
     ray.set_hit(distance, normal, material_index, dot > 0);
     return;
 }

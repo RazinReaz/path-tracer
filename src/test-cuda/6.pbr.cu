@@ -57,7 +57,7 @@ bool showTestCount = false; // Toggle for test count visualization
 bool showStats = false; // Toggle for statistics display
 int visualizationMode = 0; // 0: normal, 1: test count, 2: test count with opacity
 
-const int bounces = 3;
+const int bounces = 5;
 const int spp = 1;
 const int SEED = 42;
 int frameCount = 0;
@@ -197,31 +197,9 @@ void render(
             }
 
             Material mat = d_materials[ray.info.mat_idx];
-            evalBRDF(ray.info.norm, -ray.direction, mat, &state, newdir, weight, ray.info);
+            bool refracted = evalBRDF(ray.info.norm, -ray.direction, mat, &state, newdir, weight, ray.info);
             attenuation *= weight;
-            if (mat.type == MaterialType::REFRACTIVE) {
-                float ior1, ior2;
-                if (ray.info.backface) { // entering air
-                    ior1 = mat.ior;
-                    ior2 = 1.0f;
-                } else {
-                    ior1 = 1.0f;
-                    ior2 = mat.ior;
-                }
-                float F = fresnel(ray.direction, ray.info.norm, ior1, ior2);
-                float u = curand_uniform(&state);
-                if (F > u) {
-                    // light = vec3(1.0f, 0.0f, 0.0f);
-                    newdir = reflect(ray.direction, ray.info.norm);
-                    // light = vec3(0.0f, 1.0f, 0.0f);
-                } else {
-                    newdir = refract(ray.direction, ray.info.norm, ior1, ior2);
-                }
-                // light.setXYZ(newdir.x + 1.0f, newdir.y + 1.0f, newdir.z + 1.0f);
-                // light.scale(0.5f);
-                // break;
-            }
-            float eps = ray.info.backface && mat.type == MaterialType::REFRACTIVE ? -0.001f : 0.001f;
+            float eps = refracted ? -0.001f : 0.001f;
             ray.set_origin_and_direction(ray.origin + ray.direction * ray.info.t + ray.info.norm * eps, newdir);
             light += mat.emission * attenuation; 
         }

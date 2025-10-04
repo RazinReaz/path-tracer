@@ -66,16 +66,16 @@ __device__ __forceinline__ vec3 sampleGGXVNDF(const vec3& Vlocal, const float& a
 
 // Will calculate the weight and the new ray Direction according to the BRDF of the material
 // Will also push the ior to the info
-__device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, curandState_t *state, vec3& newdir, vec3& weight, Info& info) {
-    /*
-        N: surface normal
-        V: -ray.direction
-        mat: material
-        state: random state
-        newdir: ray direction after bounce (passed by reference)
-        weight: weight of the new ray (passed by reference)
-        info: info of the ray (passed by reference)
-    */
+// Returns true if the ray is refracted, false if it is reflected (DIFFUSE, SPECULAR, TIR, FRESNEL)
+__device__ bool evalBRDF(
+    const vec3& N, // normal from the side of surface where the ray hit
+    const vec3& V, // -ray.direction
+    const Material& mat, // material
+    curandState_t *state, // random state
+    vec3& newdir, // ray direction after bounce (passed by reference)
+    vec3& weight, // weight of the new ray (passed by reference)
+    Info& info) 
+{
     // parameters calc
     float alpha = mat.roughness * mat.roughness;
     float alphaSq = alpha * alpha;
@@ -96,7 +96,7 @@ __device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, cura
         vec3 refl = mat.albedo * (1 - mat.metalness);
         weight = refl * ( vec3(1.0f, 1.0f, 1.0f) - evalFresnelSchlick(specF0, shadowedF90(specF0), VdotH) );
         newdir = Llocal.x * tangent + Llocal.y * bitangent + Llocal.z * N;
-        return;
+        return false;
     } else if (mat.type == MaterialType::SPECULAR) {
         if (alpha < 1e-4f) {
             Hlocal.setXYZ(0.0f, 0.0f, 1.0f);
@@ -112,8 +112,9 @@ __device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, cura
         vec3 F = evalFresnelSchlick(specF0, shadowedF90(specF0), HdotL);
         weight = F * specularSampleWeight(alpha, alphaSq, NdotL, NdotV);
         newdir = Llocal.x * tangent + Llocal.y * bitangent + Llocal.z * N;
-        return;
+        return false;
     } else if (mat.type == MaterialType::REFRACTIVE) {
+        weight.setXYZ(1.0f, 1.0f, 1.0f);
         float ior1, ior2;
         if (info.backface) { // entering air
             ior1 = mat.ior;
@@ -122,14 +123,22 @@ __device__ void evalBRDF(const vec3& N, const vec3& V, const Material& mat, cura
             ior1 = 1.0f;
             ior2 = mat.ior;
         }
-        float F = fresnel(-V, N, ior1, ior2);
-        float u = curand_uniform(state);
-        if (F > u) {
+        float cosI = fminf(V.dot(N), 1.0f);
+        float mu = ior1 / ior2;
+        float sinT2 = mu * mu * (1.0f - cosI * cosI);
+        if (sinT2 > 1.0f) {
+            newdir = reflect(-V, N); // Total Internal Reflection
+            return false;
+        } 
+        //fresnel calculation
+        float cosT = sqrtf(1.0f - sinT2), F;
+        F = ior1 > ior2 ? fresnel(cosT, ior1, ior2) : fresnel(cosI, ior1, ior2);
+        if (F > curand_uniform(state)) {
             newdir = reflect(-V, N);
-        } else {
-            newdir = refract(-V, N, ior1, ior2);
-        }
-        weight.setXYZ(1.0f, 1.0f, 1.0f);
-        return;
+            return false;
+        } 
+        newdir = mu * (-V + cosI * N) - cosT * N;
+        return true;
     }
+    return false; //! fallback to avoid warning (should never happen)
 }
