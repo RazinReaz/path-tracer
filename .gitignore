@@ -11,11 +11,17 @@ bin/
 # Ignore dependency libraries (if not part of the repo)
 dependencies/
 logs/
-assets/models/
-!assets/models/obj/CornellBox-Sphere-pbr/
-!assets/models/obj/bunny-pbr/
-!assets/models/obj/bunny-pbr-small/
-!assets/models/obj/suzanne-pbr-glass/
+
+assets/screenshots/
+assets/models/*
+
+!assets/models/obj/
+assets/models/obj/dragon/
+assets/models/obj/bunny/
+!assets/models/obj/CornellBox-Sphere-pbr/** 
+!assets/models/obj/bunny-pbr/** 
+!assets/models/obj/bunny-pbr-small/** 
+!assets/models/obj/suzanne-pbr-glass/** 
 
 # Ignore editor/IDE-specific files
 .vscode/

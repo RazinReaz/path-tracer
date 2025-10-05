@@ -57,7 +57,7 @@ bool showTestCount = false; // Toggle for test count visualization
 bool showStats = false; // Toggle for statistics display
 int visualizationMode = 0; // 0: normal, 1: test count, 2: test count with opacity
 
-const int bounces = 5;
+const int bounces = 10;
 const int spp = 1;
 const int SEED = 42;
 int frameCount = 0;
@@ -143,8 +143,8 @@ void calculateTestCountStats(bvhNode *d_bvh, Triangle *d_triangles, Camera camer
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/obj/bunny-pbr-small/";
-const char *modelObjPath = "assets/models/obj/bunny-pbr-small/bunny-pbr-small.obj";
+const char *mtlBasePath = "assets/models/obj/bunny-pbr/";
+const char *modelObjPath = "assets/models/obj/bunny-pbr/bunny-pbr.obj";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
@@ -201,9 +201,9 @@ void render(
 
             Material mat = d_materials[ray.info.mat_idx];
             bool refracted = evalBRDF(ray.info.norm, -ray.direction, mat, &state, newdir, weight, ray.info);
-            attenuation *= weight;
             float eps = refracted ? -0.001f : 0.001f;
             ray.set_origin_and_direction(ray.origin + ray.direction * ray.info.t + ray.info.norm * eps, newdir);
+            attenuation *= weight;
             light += mat.emission * attenuation; 
         }
     }
