@@ -31,9 +31,9 @@ CPP_OBJ = $(CPP_SRC:src/%.cpp=$(OBJDIR)/%.obj)
 GLAD_OBJ = $(GLAD_SRC:src/%.c=$(OBJDIR)/%.obj)
 
 
-# Ensure the bin directory exists
+# Ensure the bin directory exists (Windows compatible)
 $(BINDIR):
-	@mkdir -p $(BINDIR)
+	@if not exist "$(BINDIR)" mkdir "$(BINDIR)"
 
 all: $(BINDIR) $(TARGETS)
 
@@ -69,6 +69,9 @@ $(BINDIR)/5.bvh.run: src/test-cuda/5.bvh.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
 $(BINDIR)/6.pbr.run: src/test-cuda/6.pbr.cu $(CPP_OBJ)
 	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
+$(BINDIR)/main.run: src/main.cu $(CPP_OBJ)
+	$(CUDA) -o $@ $^ $(GLAD_SRC) $(CUDA_FLAGS) $(CUDA_LIBS) $(GL_LIBS)
+
 
 $(BINDIR)/test/random-unit-vector.run: src/test/random-unit-vector.cu
 	$(CUDA) -o $@ $^ $(CUDA_FLAGS) $(CUDA_LIBS)
@@ -85,6 +88,11 @@ $(BINDIR)/benchmark/benchmark_bvh.run: src/benchmark/benchmark_bvh.cu
 
 
 run-%: $(BINDIR)/%.run
+	@echo "Running CUDA $<..."
+	@./$<
+
+# Convenience run target for main
+run-main: $(BINDIR)/main.run
 	@echo "Running CUDA $<..."
 	@./$<
 

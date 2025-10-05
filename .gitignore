@@ -12,6 +12,10 @@ bin/
 dependencies/
 logs/
 assets/models/
+!assets/models/obj/CornellBox-Sphere-pbr/
+!assets/models/obj/bunny-pbr/
+!assets/models/obj/bunny-pbr-small/
+!assets/models/obj/suzanne-pbr-glass/
 
 # Ignore editor/IDE-specific files
 .vscode/
