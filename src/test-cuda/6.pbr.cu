@@ -42,7 +42,7 @@ float invWidth = 1.0f / screenWidth;
 float invHeight = 1.0f / screenHeight;
 
 // Camera parameters
-Camera camera(vec3(0, 1, 3), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
+Camera camera(vec3(0, 1, 4.2), vec3(0, 1, 0), -90.0f, 0.0f, 45.0f, 0.1f, 100.0f, aspect);
 float widthMultiplier = invWidth * camera.fullwidth;
 float heightMultiplier = invHeight * camera.fullheight;
 
@@ -143,12 +143,12 @@ void calculateTestCountStats(bvhNode *d_bvh, Triangle *d_triangles, Camera camer
 
 const char *vertexShaderPath = "assets/shaders/cuda/vert.vs";
 const char *fragmentShaderPath = "assets/shaders/cuda/frag.fs";
-const char *mtlBasePath = "assets/models/obj/pbr-test/";
-const char *modelObjPath = "assets/models/obj/pbr-test/test.obj";
+const char *mtlBasePath = "assets/models/obj/bunny-pbr-small/";
+const char *modelObjPath = "assets/models/obj/bunny-pbr-small/bunny-pbr-small.obj";
 
 // __global__ vec3 skyColor(0.63, 0.85, 0.92);
 
-__global__ void initialize_rng(curandState_t* states, unsigned long seed, int total) {
+__global__ void initialize_rng(curandStatePhilox4_32_10_t* states, unsigned long seed, int total) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= total) return;
     // Same seed for reproducibility, unique sequence per pixel
@@ -163,7 +163,7 @@ void render(
     const float wMult, const float hMult, 
     Camera camera, 
     Triangle *d_triangles, bvhNode *d_bvh,
-     Material *d_materials, curandState_t *states,
+     Material *d_materials, curandStatePhilox4_32_10_t *states,
     int bounces, int spp,
     float *d_framebuffer, float weight
 ) 
@@ -173,12 +173,15 @@ void render(
     if (pixelx >= w || pixely >= h) return;
 	int offset = pixelx + pixely * w;
 
-    curandState_t state = states[offset];
+    curandStatePhilox4_32_10_t state = states[offset];
 
     vec3 light(0.0f, 0.0f, 0.0f);
     for (int i = 0; i < spp; i++) {
-        float u = ((float)pixelx + curand_uniform(&state)) * wMult;
-        float v = ((float)pixely + curand_uniform(&state)) * hMult;
+        // Generate 4 random values at once
+        float4 rand4 = curand_uniform4(&state);
+        
+        float u = ((float)pixelx + rand4.x) * wMult;
+        float v = ((float)pixely + rand4.y) * hMult;
         
         vec3 rayOrigin = camera.position;
         vec3 rayDest = camera.bottomleft + u * camera.right + v * camera.up;
@@ -385,6 +388,7 @@ int main() {
 
     std::cout << "loading model from " << modelObjPath << std::endl;
     loader->loadTrianglesAndMaterials(h_triangles, h_materials);
+    std::cout << "number of triangles: " << h_triangles.size() << std::endl;
     std::cout << "triangles and PBR materials loaded" << std::endl;
     h_bvh = createBVHandSortTriangles(h_triangles);
     std::cout << "BVH created and triangles sorted" << std::endl;
@@ -393,15 +397,14 @@ int main() {
     uploadTrianglesToGPU(h_triangles, &d_triangles);
     uploadBVHToGPU(h_bvh, &d_bvh);
     std::cout << "BVH and triangles successfully uploaded to GPU" << std::endl;
-
     std::cout << "Size of bvh node: " << sizeof(bvhNode) << std::endl;
     // materials
     uploadMaterialsToGPU(h_materials, &d_materials);
     std::cout << "Materials successfully uploaded to GPU" << std::endl;
 
     //curand stuff
-    curandState_t *d_states; //declare the states array
-    CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandState_t))); // allocate space in the GPU for the states array
+    curandStatePhilox4_32_10_t *d_states; //declare the states array
+    CUDA_CHECK(cudaMalloc(&d_states, totalPixels * sizeof(curandStatePhilox4_32_10_t))); // allocate space in the GPU for the states array
     initialize_rng<<<(totalPixels + 255) / 256, 256>>>(d_states, SEED, totalPixels); // initialize the values of the states array in the GPU
     std::cout << "rng states successfully initialized" << std::endl;
 

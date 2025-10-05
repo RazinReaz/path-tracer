@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Material& mat) {
 
 
 __device__
-void scatter_ray(Ray& ray, curandState_t *state)
+void scatter_ray(Ray& ray, curandStatePhilox4_32_10_t *state)
 {
     // //! ChatGPT maybe too many new vec3s
     vec3 normal = ray.info.norm;
@@ -59,7 +59,7 @@ void scatter_ray(Ray& ray, curandState_t *state)
 }
 
 __device__ 
-Ray bounce(Ray &ray, Material &material, curandState_t *state)
+Ray bounce(Ray &ray, Material &material, curandStatePhilox4_32_10_t *state)
 {
     // handles DIFFUSE and METALLIC materials
     switch (material.type) {

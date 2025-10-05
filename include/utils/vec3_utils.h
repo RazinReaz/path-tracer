@@ -15,9 +15,10 @@ __device__ __host__ __forceinline__ float lerp(const float& a, const float& b, c
     return a * (1.0f - t) + b * t;
 }
 
-__device__ inline vec3 random_vec_on_disk(curandState_t *state) {
-    float u = curand_uniform(state) * 2.0f - 1.0f;
-    float v = curand_uniform(state) * 2.0f - 1.0f;
+__device__ inline vec3 random_vec_on_disk(curandStatePhilox4_32_10_t *state) {
+    float4 rand4 = curand_uniform4(state);
+    float u = rand4.x * 2.0f - 1.0f;
+    float v = rand4.y * 2.0f - 1.0f;
 
     if (u == 0.0f && v == 0.0f) return vec3(0.0f, 0.0f, 0.0f);
 
@@ -35,7 +36,7 @@ __device__ inline vec3 random_vec_on_disk(curandState_t *state) {
     return vec3(r * cosf(theta), r * sinf(theta), 0.0f);
 }
 
-__device__ inline vec3 unit_vec3_on_hemisphere(curandState_t *state){
+__device__ inline vec3 unit_vec3_on_hemisphere(curandStatePhilox4_32_10_t *state){
     // give us an uniformly distributed random unit 3d vector on a hemisphere on the xy plane 
     // uses Malley's cosine weighted sampling technique
     vec3 v = random_vec_on_disk(state);
@@ -73,7 +74,7 @@ __device__ inline vec3 rotate_to_align_hemiZ_to_normal(const vec3& v, const vec3
 }
 
 
-__device__ vec3 scatter_along(vec3 normal, curandState_t *state) {
+__device__ vec3 scatter_along(vec3 normal, curandStatePhilox4_32_10_t *state) {
     vec3 dir = unit_vec3_on_hemisphere(state);
     dir = rotate_to_align_hemiZ_to_normal(dir, normal);
     return dir;

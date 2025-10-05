@@ -39,7 +39,7 @@ __device__ __forceinline__ float specularSampleWeight(const float& alpha, const 
 // Source: "Sampling Visible GGX Normals with Spherical Caps" by Dupuy & Benyoub
 // Random variables 'u' must be in <0;1) interval
 // PDF is 'G1(NdotV) * D'
-__device__ __forceinline__ vec3 sampleGGXVNDF(const vec3& Vlocal, const float& alphax, const float& alphay, curandState_t *state) {
+__device__ __forceinline__ vec3 sampleGGXVNDF(const vec3& Vlocal, const float& alphax, const float& alphay, curandStatePhilox4_32_10_t *state) {
     /* 
         The imlementation uses vec2(u, v) to sample the direction. 
         I am only passing one state, that I will use to generate two random uniform numbers
@@ -71,10 +71,11 @@ __device__ bool evalBRDF(
     const vec3& N, // normal from the side of surface where the ray hit
     const vec3& V, // -ray.direction
     const Material& mat, // material
-    curandState_t *state, // random state
+    curandStatePhilox4_32_10_t *state, // random state
     vec3& newdir, // ray direction after bounce (passed by reference)
     vec3& weight, // weight of the new ray (passed by reference)
-    Info& info) 
+    Info& info
+) 
 {
     // parameters calc
     float alpha = mat.roughness * mat.roughness;
@@ -115,16 +116,16 @@ __device__ bool evalBRDF(
         return false;
     } else if (mat.type == MaterialType::REFRACTIVE) {
         weight.setXYZ(1.0f, 1.0f, 1.0f);
-        float ior1, ior2;
-        if (info.backface) { // entering air
-            ior1 = mat.ior;
-            ior2 = 1.0f;
+        float ior_incident, ior_transmitted;
+        if (info.backface) { 
+            ior_incident = mat.ior;
+            ior_transmitted = 1.0f;
         } else {
-            ior1 = 1.0f;
-            ior2 = mat.ior;
+            ior_incident = 1.0f;
+            ior_transmitted = mat.ior;
         }
         float cosI = fminf(V.dot(N), 1.0f);
-        float mu = ior1 / ior2;
+        float mu = ior_incident / ior_transmitted;
         float sinT2 = mu * mu * (1.0f - cosI * cosI);
         if (sinT2 > 1.0f) {
             newdir = reflect(-V, N); // Total Internal Reflection
@@ -132,12 +133,13 @@ __device__ bool evalBRDF(
         } 
         //fresnel calculation
         float cosT = sqrtf(1.0f - sinT2), F;
-        F = ior1 > ior2 ? fresnel(cosT, ior1, ior2) : fresnel(cosI, ior1, ior2);
-        if (F > curand_uniform(state)) {
+        F = ior_incident > ior_transmitted ? fresnel(cosT, ior_incident, ior_transmitted) : fresnel(cosI, ior_incident, ior_transmitted);
+        if (F > curand_uniform4(state).x) {
             newdir = reflect(-V, N);
             return false;
         } 
         newdir = mu * (-V + cosI * N) - cosT * N;
+
         return true;
     }
     return false; //! fallback to avoid warning (should never happen)

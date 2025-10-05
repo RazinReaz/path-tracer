@@ -4,14 +4,13 @@
 #include <ostream>
 #include <cfloat> // for FLT_MAX
 
-const int MAX_IOR_DEPTH = 4;
+
 
 typedef struct Info
 {  
     float t;
     int mat_idx;
     vec3 norm;
-    float ior;
     bool hit;
     bool backface;
 } Info;
@@ -50,7 +49,6 @@ Ray::Ray(const vec3 &orig, const vec3 &dir)
     info.t = FLT_MAX;
     info.norm = vec3(0.0f, 0.0f, 0.0f);
     info.mat_idx = -1;
-    info.ior = 1.0f;
     info.backface = false;
 }
 
