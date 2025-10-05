@@ -57,7 +57,7 @@ Ok so back again to it after seeing something on instagram saying that I just ne
 Now I need to code the traversal of the bvh, integrate it into my path tracer, and then try to make it CUDA friendly
 
 okay so moment of truth!\
-![First attempt at BVH](./assets/readme/bvh_1.png)
+![First attempt at BVH](./assets/readme/bvh_1.png)\
 Something doesn't seem to be right.
 so, first of all, I was calculating the morton codes wrongly
 then I tried to visualize the bounding boxes using triangles as lines. Which didn't really help.
@@ -70,7 +70,7 @@ So yeah, if we have to check both the children, a recursion would be nice. but s
 One might think it is a good idea to go stackfree because stacks need extra memory. but, if we were to do that, we would need to store the index values of the nodes we have yet to visit in some other way. Well at least that is what CHatgpt said. so extra memory is always needed.
 I ran into a problem. Following Sabastian Lague, i implemented the check before pushing a node('s index) onto the stack. If the ray has already found a t value that is lower than a child's t value, then all triangles in the child are farther away and do not need to be tested. so, 
 `if ray.info.t < tleft` we don't push the left child onto the stack and vice versa. But somehow this was not working. 
-![with ray.info.t test before pushing](./assets/readme/bvh-tri.png)
+![with ray.info.t test before pushing](./assets/readme/bvh-tri.png)\
 
 gotta get it fixed tomorrow. but for now, the code without the test works. not wonderfully. it gets me 1 fps.
 Okay so brand new day. I collapsed the bvhNode to fit into 32 bytes (for CUDA memory alignment) and it bumped the FPS from 1.0 to 1.4.
@@ -104,8 +104,8 @@ void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
 turns out, the comparison was not working because the `t` values were not in the same unit. \
 Let me explain. in my ray class, when I calculate the inverse direction (that would optimize by AABB intersection test), I put the unnormalized direction to calculate the `inv_direction` field. 
 After fixing that bug, I got 86 FPS in my test scene.\
-![BVH FINALLY WORKS](./assets/readme/bvh-works-1.png)
-![BVH FINALLY WORKS STILL](./assets/readme/bvh-works-2.png)
+![BVH FINALLY WORKS](./assets/readme/bvh-works-1.png)\
+![BVH FINALLY WORKS STILL](./assets/readme/bvh-works-2.png)\
 
 Next up, specular BRDF and Refraction
 
@@ -142,7 +142,7 @@ So apparently, refraction has a lot of cases to handle.
 - Is my ray just grazing the refractive surface?
 
 I do some vector math, run the code aaaand:\
-![refraction-bug](./assets/readme/refraction-bug.png)
+![refraction-bug](./assets/readme/refraction-bug.png)\
 What are these layers of reflection I am getting inside the right sphere? 
 
 After much thought I figured out that one thing that I failed to notice was that, before refraction, I did not have to worry about *which way the surface normal was facing*. Now I do. I first modify the triangle intersection function to report true for both sides. Then I keep track of whether or not I hit the backface of the triangle inside the `ray.info` struct. If I am hitting a refractive surface and the backface is true, then I am entering a lighter medium from a dense medium (*a huge assumption. because what if my ray goes from air to water to glass to air?*). Should I keep a stack of the iors that I already passed through and pop them when I am exiting a medium? Thinking about this many cases this early into development paralyzes me. Maybe I will get over it someday. For now, let's just assume there we only enter or exit from air to one other dense medium.
@@ -159,20 +159,20 @@ ray.set_origin_and_direction(ray.origin + ray.direction * ray.info.t + ray.info.
 ```
 
 and the results:\
-![refraction-done](./assets/readme/refraction-done.png)
+![refraction-done](./assets/readme/refraction-done.png)\
 Just look at how the light rays are getting concentrated under the glass!
 
 Now that I can make everything into a refractive surface. It's time to go haywire. I spend the evening and night editing models in tinkerCAD (not recommended) and create some nice images:\
 
-![big water bunny](./assets/readme/bunny-non-normal.png)
+![big water bunny](./assets/readme/bunny-non-normal.png)\
 Well this looks swell until I see the totally flat triangluar caustics! I was assigning the face normals to all three vertices as as a fallback when there were no normals included in the `.obj` file. And what do you know, **TinkerCAD does not export obj files with smooth normals!!**
 
 So after a bit of coding and stumbling  around, I calculated smooth normals:\
-![bunny-smooth-normals](./assets/readme/bunny-normal.png)
+![bunny-smooth-normals](./assets/readme/bunny-normal.png)\
 JUST LOOK AT THE CAUSTICS ON THE FLOOR!
 
 But not generating smooth normals gave me some prett interesting results as well:
-![Interesting glass sphere](./assets/readme/sphere-non-normal.png)
+![Interesting glass sphere](./assets/readme/sphere-non-normal.png)\
 
 # RIS (Coming soon)
 
