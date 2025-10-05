@@ -56,7 +56,7 @@ Ok so back again to it after seeing something on instagram saying that I just ne
 
 Now I need to code the traversal of the bvh, integrate it into my path tracer, and then try to make it CUDA friendly
 
-okay so moment of truth!
+okay so moment of truth!\
 ![First attempt at BVH](./assets/readme/bvh_1.png)
 Something doesn't seem to be right.
 so, first of all, I was calculating the morton codes wrongly
@@ -103,7 +103,7 @@ void traverseTree(bvhNode *d_BVH, Triangle *d_triangles, Ray &ray) {
 ```
 turns out, the comparison was not working because the `t` values were not in the same unit. \
 Let me explain. in my ray class, when I calculate the inverse direction (that would optimize by AABB intersection test), I put the unnormalized direction to calculate the `inv_direction` field. 
-After fixing that bug, I got 86 FPS in my test scene.
+After fixing that bug, I got 86 FPS in my test scene.\
 ![BVH FINALLY WORKS](./assets/readme/bvh-works-1.png)
 ![BVH FINALLY WORKS STILL](./assets/readme/bvh-works-2.png)
 
@@ -127,7 +127,7 @@ first a little refactor here and there, rolling back the changes because it does
 So, basically the gltf works with nodes and there are transforamtions needed to be applied on those nodes. Since I am not using glm anymore, let's write a matrix class (but only for transformations )
 
 ## Then specular BRDF
-After trying for a while, i scrapped the idea of gltf and went back to the microfacet models. I figured out the `TINY_OBJ_LOADER` already has support to parse microfacet properties. like getting the `metalness` and `roughness` from `Pm` and `Pr` in the `.mtl` file respectively. So yeah, after implementing the specular BRDF (GGX VNDF sampling to get the half vector Fresnel term for the weights) My path tracer now has smooth (and rough) mirrors!
+After trying for a while, i scrapped the idea of gltf and went back to the microfacet models. I figured out the `TINY_OBJ_LOADER` already has support to parse microfacet properties. like getting the `metalness` and `roughness` from `Pm` and `Pr` in the `.mtl` file respectively. So yeah, after implementing the specular BRDF (GGX VNDF sampling to get the half vector Fresnel term for the weights) My path tracer now has smooth (and rough) mirrors!\
 ![mirros balls](./assets/readme/specular-done.png)\
 Look at em go!
 
@@ -141,7 +141,7 @@ So apparently, refraction has a lot of cases to handle.
 - Is the angle of incidents large enough for reflection to happen?
 - Is my ray just grazing the refractive surface?
 
-I do some vector math, run the code aaaand:
+I do some vector math, run the code aaaand:\
 ![refraction-bug](./assets/readme/refraction-bug.png)
 What are these layers of reflection I am getting inside the right sphere? 
 
@@ -158,16 +158,16 @@ float eps = refracted ? -0.001f : 0.001f;
 ray.set_origin_and_direction(ray.origin + ray.direction * ray.info.t + ray.info.norm * eps, newdir);
 ```
 
-and the results:
+and the results:\
 ![refraction-done](./assets/readme/refraction-done.png)
 Just look at how the light rays are getting concentrated under the glass!
 
-Now that I can make everything into a refractive surface. It's time to go haywire. I spend the evening and night editing models in tinkerCAD (not recommended) and create some nice images:
+Now that I can make everything into a refractive surface. It's time to go haywire. I spend the evening and night editing models in tinkerCAD (not recommended) and create some nice images:\
 
 ![big water bunny](./assets/readme/bunny-non-normal.png)
 Well this looks swell until I see the totally flat triangluar caustics! I was assigning the face normals to all three vertices as as a fallback when there were no normals included in the `.obj` file. And what do you know, **TinkerCAD does not export obj files with smooth normals!!**
 
-So after a bit of coding and stumbling  around, I calculated smooth normals:
+So after a bit of coding and stumbling  around, I calculated smooth normals:\
 ![bunny-smooth-normals](./assets/readme/bunny-normal.png)
 JUST LOOK AT THE CAUSTICS ON THE FLOOR!
 
