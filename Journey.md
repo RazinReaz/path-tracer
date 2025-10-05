@@ -171,10 +171,9 @@ So after a bit of coding and stumbling  around, I calculated smooth normals:
 ![bunny-smooth-normals](./assets/readme/bunny-normal.png)
 JUST LOOK AT THE CAUSTICS ON THE FLOOR!
 
+But not generating smooth normals gave me some prett interesting results as well:
+![Interesting glass sphere](./assets/readme/sphere-non-normal.png)
 
+# RIS (Coming soon)
 
-## look out for
- - I am passing the pointer to the global camera object and accessing it in each thread. is that wasteful? 
- ChatGPT said, since the camera is changing, I should not use `__constant__` or pass the pointer. dereferencing pointer takes up time.
- - if I am determining the type of material (metal, lambertian, dielectric) from the `.mtl` file values, then how do I determine the albedo? is it the ambient color or is it the diffuse color?
 
