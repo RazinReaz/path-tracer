@@ -1,5 +1,16 @@
-# Real Time Path Tracer using CUDA and OpenGL
+# Real Time Path Tracer
+The project uses CUDA and OpenGL interop to trace paths from the scene. 
 
+![Stanford Bunny of water](./assets/readme/bunny-water-10-bounces.png)\
+![Cornell spheres](./assets/readme/refraction-done.png)\
+![ground caustics](./assets/readme/bunny-normal.png)
+
+- Scenes are being loaded from an obj file (models [here](./assets/models/obj/)) with pbr parameters added manually for [TinyObjLoader](https://github.com/tinyobjloader/tinyobjloader) to parse.
+- A BVH is built from the triangles using Morton code and traversed using a stackfull approach (check [`./include/ray-tracer/bvh.h`](./include/ray-tracer/bvh.h) for details)
+- Using microfacet model to calculate the BRDFs (check [`./include/ray-tracer/brdf.h`](./include/ray-tracer/brdf.h) for details)
+
+## Journey
+- Read [here](./Journey.md) for an unsolicited informal walkthrough of what I went through while building this project...!
 
 ## Setup and Running (Windows/MSVC + CUDA)
 **THIS SECTION IS WRITTEN SOLELY BY AI**
